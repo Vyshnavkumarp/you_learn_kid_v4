@@ -7,9 +7,62 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .user-menu {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #f0f0f0;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        
+        .user-info i {
+            color: #4CAF50;
+        }
+        
+        .logout-btn {
+            background-color: #ff5252;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .logout-btn:hover {
+            background-color: #ff1744;
+        }
+    </style>
 </head>
 <body>
     <div class="chat-container">
+        <div class="user-menu">
+            <div class="user-info">
+                <i class="fas fa-user"></i>
+                <span>{{ current_user.first_name }}</span>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                Logout
+            </a>
+        </div>
+        
         <div class="chat-header">
             <h1>👋 Hi! I'm Buddy, Your Learning Friend!</h1>
             <p>Ask me anything - I'm here to help you learn and have fun! 🌟</p>
