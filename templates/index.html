@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buddy - Your Learning Friend!</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>👋 Hi! I'm Buddy, Your Learning Friend!</h1>
+            <p>Ask me anything - I'm here to help you learn and have fun! 🌟</p>
+            <div class="feature-buttons">
+                <button id="voice-input" title="Speak your question">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <button id="toggle-sound" title="Toggle sound">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+                <button id="generate-quiz" title="Generate a quiz">
+                    <i class="fas fa-question-circle"></i>
+                </button>
+            </div>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <div class="message bot-message">
+                <div class="message-content">
+                    Hello! 😊 I'm Buddy, your friendly learning assistant! I'm here to help you discover amazing things and answer all your curious questions. What would you like to learn about today? 🌟
+                </div>
+            </div>
+        </div>
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Thinking... 🤔</p>
+        </div>
+        <div id="quiz-container" class="quiz-container hidden">
+            <div class="quiz-header">
+                <h3>Fun Quiz Time! 🎯</h3>
+                <button class="close-button" id="close-quiz">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="quiz-content">
+                <h3 class="quiz-question"></h3>
+                <div class="quiz-options"></div>
+                <div class="quiz-feedback"></div>
+            </div>
+        </div>
+        <div id="tip-container" class="tip-container hidden">
+            <div class="tip-content"></div>
+        </div>
+        <div class="chat-input-container">
+            <input type="text" id="user-input" placeholder="Type your question here...">
+            <button id="send-button">Send 🚀</button>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
