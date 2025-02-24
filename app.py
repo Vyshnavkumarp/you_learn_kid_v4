@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, send_file, redirect, url_for, flash
+from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
 from flask_cors import CORS
 import os
 from dotenv import load_dotenv
@@ -54,98 +54,65 @@ def index():
 def chat():
     return render_template('index.html')
 
-@app.route('/login')
-def login_page():
-    return render_template('login.html')
-
-@app.route('/register')
-def register_page():
-    return render_template('register.html')
-
 @app.route('/send_message', methods=['POST'])
 @login_required
 def send_message():
-    user_message = request.json.get('message', '')
-    
     try:
-        # Get response from the chatbot
-        response = chatbot.get_response(user_message)
+        data = request.json
+        message = data.get('message', '')
         
-        # Generate speech file
-        speech_file = interactive.text_to_speech(response)
+        if not message:
+            return jsonify({'error': 'No message provided'}), 400
         
-        # Update conversation context
-        interactive.update_conversation_context(user_message)
+        # Get response from chatbot
+        response = chatbot.get_response(message)
         
-        # Get learning tip
-        tip = interactive.get_learning_tip(None)
+        # Check if we should generate a quiz
+        should_generate_quiz = interactive.should_generate_quiz(message)
+        quiz_data = interactive.generate_quiz() if should_generate_quiz else None
         
-        # Generate quiz if message contains quiz-related keywords
-        if any(word in user_message.lower() for word in ['quiz', 'test', 'question']):
-            quiz = interactive.generate_quiz_with_llm(user_message)
-            return jsonify({
-                'response': response,
-                'quiz': quiz,
-                'speech_available': True,
-                'tip': tip
-            })
+        # Get a learning tip
+        learning_tip = interactive.get_learning_tip() if random.random() < 0.3 else None
         
         return jsonify({
             'response': response,
-            'speech_available': True,
-            'tip': tip
+            'quiz': quiz_data,
+            'learning_tip': learning_tip
         })
         
     except Exception as e:
         print(f"Error in send_message: {str(e)}")
-        return jsonify({
-            'response': "I'm having trouble understanding. Could you try asking that again?",
-            'speech_available': False
-        })
+        return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/check_answer', methods=['POST'])
 @login_required
 def check_answer():
     try:
         data = request.json
-        user_answer = data.get('answer', '')
-        question = data.get('question', {})
+        selected_index = data.get('selected_index')
+        correct_index = data.get('correct_index')
         
-        if not question or not user_answer:
-            return jsonify({'error': 'Invalid request data'}), 400
-            
-        result = interactive.check_answer(question, user_answer)
-        return jsonify(result)
+        is_correct = selected_index == correct_index
+        feedback = "Correct! Well done! " if is_correct else "Not quite right. Keep trying! "
+        
+        return jsonify({
+            'is_correct': is_correct,
+            'feedback': feedback
+        })
+        
     except Exception as e:
-        print(f"Error checking answer: {str(e)}")
-        return jsonify({'error': 'Error checking answer'}), 500
+        print(f"Error in check_answer: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
 
-@app.route('/get_speech', methods=['GET'])
-@login_required
-def get_speech():
-    try:
-        speech_file = os.path.join('temp', 'speech.mp3')
-        if os.path.exists(speech_file):
-            return send_file(speech_file, mimetype='audio/mp3')
-        return jsonify({'error': 'Speech file not found'}), 404
-    except Exception as e:
-        print(f"Error getting speech: {str(e)}")
-        return jsonify({'error': 'Error getting speech file'}), 500
-
-@app.route('/generate_quiz', methods=['GET'])
+@app.route('/generate_quiz')
 @login_required
 def generate_quiz():
     try:
-        # Generate quiz using current conversation context
-        quiz = interactive.generate_quiz_with_llm()
-        return jsonify({
-            'quiz': quiz,
-            'tip': interactive.get_learning_tip(None)
-        })
+        quiz_data = interactive.generate_quiz()
+        return jsonify(quiz_data)
     except Exception as e:
-        print(f"Error generating quiz: {str(e)}")
-        return jsonify({'error': 'Error generating quiz'}), 500
+        print(f"Error in generate_quiz: {str(e)}")
+        return jsonify({'error': 'Failed to generate quiz'}), 500
 
 if __name__ == '__main__':
-    os.makedirs('temp', exist_ok=True)
     app.run(debug=True)

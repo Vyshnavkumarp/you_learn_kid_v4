@@ -3,13 +3,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
     const voiceButton = document.getElementById('voice-input');
-    const soundButton = document.getElementById('toggle-sound');
     const quizContainer = document.getElementById('quiz-container');
     const tipContainer = document.getElementById('tip-container');
     const loadingElement = document.getElementById('loading');
     const closeQuizButton = document.getElementById('close-quiz');
 
-    let soundEnabled = true;
     let currentQuiz = null;
     let isProcessing = false;
 
@@ -37,238 +35,184 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingElement.classList.add('hidden');
     }
 
-    async function playResponse(text) {
-        if (!soundEnabled) return;
-        
-        try {
-            const response = await fetch('/get_speech');
-            if (!response.ok) throw new Error('Failed to get speech');
-            
-            const blob = await response.blob();
-            const audio = new Audio(URL.createObjectURL(blob));
-            await audio.play();
-        } catch (error) {
-            console.error('Error playing audio:', error);
-        }
-    }
-
     function displayQuiz(quiz) {
-        if (!quiz) return;
-        
         currentQuiz = quiz;
         const quizContent = quizContainer.querySelector('.quiz-content');
-        const questionEl = quizContent.querySelector('.quiz-question');
-        const optionsEl = quizContent.querySelector('.quiz-options');
-        const feedbackEl = quizContent.querySelector('.quiz-feedback');
+        const questionElement = quizContent.querySelector('.quiz-question');
+        const optionsElement = quizContent.querySelector('.quiz-options');
+        const feedbackElement = quizContent.querySelector('.quiz-feedback');
         
-        questionEl.textContent = quiz.question;
-        optionsEl.innerHTML = '';
-        feedbackEl.textContent = '';
-        feedbackEl.style.display = 'none';
+        questionElement.textContent = quiz.question;
+        optionsElement.innerHTML = '';
+        feedbackElement.innerHTML = '';
         
-        quiz.options.forEach(option => {
+        quiz.options.forEach((option, index) => {
             const button = document.createElement('button');
             button.className = 'quiz-option';
             button.textContent = option;
-            button.onclick = () => checkAnswer(option);
-            optionsEl.appendChild(button);
+            button.onclick = () => checkAnswer(index);
+            optionsElement.appendChild(button);
         });
         
         quizContainer.classList.remove('hidden');
     }
 
     function displayTip(tip) {
-        if (!tip) return;
         const tipContent = tipContainer.querySelector('.tip-content');
         tipContent.textContent = tip;
         tipContainer.classList.remove('hidden');
     }
 
-    async function checkAnswer(answer) {
+    async function checkAnswer(selectedIndex) {
         if (!currentQuiz) return;
+        
+        const quizContent = quizContainer.querySelector('.quiz-content');
+        const optionsElement = quizContent.querySelector('.quiz-options');
+        const feedbackElement = quizContent.querySelector('.quiz-feedback');
+        const buttons = optionsElement.querySelectorAll('button');
+        
+        // Disable all buttons
+        buttons.forEach(button => button.disabled = true);
         
         try {
             const response = await fetch('/check_answer', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    question: currentQuiz,
-                    answer: answer
+                    selected_index: selectedIndex,
+                    correct_index: currentQuiz.correct_index
                 })
             });
-
-            const result = await response.json();
-            const feedback = quizContainer.querySelector('.quiz-feedback');
-            feedback.textContent = result.message;
-            feedback.style.display = 'block';
             
-            // Highlight correct/incorrect answers
-            const options = quizContainer.querySelectorAll('.quiz-option');
-            options.forEach(option => {
-                if (option.textContent === answer) {
-                    option.classList.add(result.correct ? 'correct' : 'incorrect');
+            if (!response.ok) throw new Error('Failed to check answer');
+            
+            const data = await response.json();
+            feedbackElement.innerHTML = `
+                <div class="quiz-feedback-content ${data.is_correct ? 'correct' : 'incorrect'}">
+                    <i class="fas ${data.is_correct ? 'fa-check-circle' : 'fa-times-circle'}"></i>
+                    <p>${data.feedback}</p>
+                </div>
+            `;
+            
+            // Highlight correct and incorrect answers
+            buttons.forEach((button, index) => {
+                if (index === currentQuiz.correct_index) {
+                    button.classList.add('correct');
+                } else if (index === selectedIndex && !data.is_correct) {
+                    button.classList.add('incorrect');
                 }
-                option.disabled = true;
             });
             
-            // Play sound effect
-            if (soundEnabled) {
-                const audio = new Audio(result.correct ? '/static/correct.mp3' : '/static/incorrect.mp3');
-                audio.play().catch(err => console.error('Error playing sound:', err));
-            }
         } catch (error) {
             console.error('Error checking answer:', error);
+            feedbackElement.textContent = 'Error checking answer. Please try again.';
         }
     }
 
     function closeQuiz() {
         quizContainer.classList.add('hidden');
+        const feedbackElement = quizContainer.querySelector('.quiz-feedback');
+        feedbackElement.innerHTML = '';
         currentQuiz = null;
-        const feedbackEl = quizContainer.querySelector('.quiz-feedback');
-        feedbackEl.textContent = '';
-        feedbackEl.style.display = 'none';
     }
 
     async function sendMessage() {
+        if (isProcessing || !userInput.value.trim()) return;
+        
         const message = userInput.value.trim();
-        if (!message || isProcessing) return;
-
-        isProcessing = true;
         userInput.value = '';
         addMessage(message, true);
+        
         showLoading();
-
+        isProcessing = true;
+        
         try {
             const response = await fetch('/send_message', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ message: message })
+                body: JSON.stringify({ message })
             });
-
+            
             if (!response.ok) throw new Error('Failed to send message');
             
             const data = await response.json();
-            hideLoading();
             
-            // Add bot's response
+            hideLoading();
             addMessage(data.response);
             
-            // Handle speech
-            if (data.speech_available && soundEnabled) {
-                await playResponse(data.response);
-            }
-            
-            // Handle quiz if present
             if (data.quiz) {
                 displayQuiz(data.quiz);
-            } else {
-                quizContainer.classList.add('hidden');
             }
             
-            // Handle tip if present
-            if (data.tip) {
-                displayTip(data.tip);
-            } else {
-                tipContainer.classList.add('hidden');
+            if (data.learning_tip) {
+                displayTip(data.learning_tip);
             }
+            
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error sending message:', error);
             hideLoading();
-            addMessage("I'm having trouble understanding. Could you try asking that again?");
-        } finally {
-            isProcessing = false;
-            userInput.focus();
+            addMessage('Sorry, I encountered an error. Please try again.');
         }
+        
+        isProcessing = false;
     }
 
     // Voice input handling
-    voiceButton.addEventListener('click', async () => {
-        if (!('webkitSpeechRecognition' in window)) {
-            alert('Speech recognition is not supported in your browser.');
-            return;
-        }
-
-        if (isProcessing) return;
-
+    if ('webkitSpeechRecognition' in window) {
         const recognition = new webkitSpeechRecognition();
         recognition.continuous = false;
         recognition.interimResults = false;
-
+        
         recognition.onstart = () => {
-            voiceButton.classList.add('recording');
-            userInput.placeholder = 'Listening...';
+            voiceButton.classList.add('listening');
         };
-
+        
         recognition.onend = () => {
-            voiceButton.classList.remove('recording');
-            userInput.placeholder = 'Type your question here...';
+            voiceButton.classList.remove('listening');
         };
-
+        
         recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript;
             userInput.value = transcript;
             sendMessage();
         };
-
-        recognition.start();
-    });
-
-    // Toggle sound
-    soundButton.addEventListener('click', () => {
-        soundEnabled = !soundEnabled;
-        soundButton.querySelector('i').className = soundEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute';
-    });
-
-    // Quiz generation button
-    const generateQuizButton = document.getElementById('generate-quiz');
-    if (generateQuizButton) {
-        generateQuizButton.addEventListener('click', async () => {
-            if (isProcessing) return;
-            
-            isProcessing = true;
-            showLoading();
-            
-            try {
-                const response = await fetch('/generate_quiz');
-                if (!response.ok) throw new Error('Failed to generate quiz');
-                
-                const data = await response.json();
-                if (data.quiz) {
-                    displayQuiz(data.quiz);
-                }
-                if (data.tip) {
-                    displayTip(data.tip);
-                }
-            } catch (error) {
-                console.error('Error generating quiz:', error);
-                addMessage("Sorry, I couldn't generate a quiz right now. Please try again!");
-            } finally {
-                hideLoading();
-                isProcessing = false;
-            }
+        
+        voiceButton.addEventListener('click', () => {
+            recognition.start();
         });
+    } else {
+        voiceButton.style.display = 'none';
     }
 
-    // Close quiz button
-    if (closeQuizButton) {
-        closeQuizButton.addEventListener('click', closeQuiz);
-    }
-
-    // Send message on button click
-    sendButton.addEventListener('click', sendMessage);
-
-    // Send message on Enter key (without Shift)
-    userInput.addEventListener('keydown', (e) => {
+    // Event listeners
+    userInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
         }
     });
 
-    // Focus input on page load
-    userInput.focus();
+    sendButton.addEventListener('click', sendMessage);
+    closeQuizButton.addEventListener('click', closeQuiz);
+
+    // Generate quiz button
+    document.getElementById('generate-quiz').addEventListener('click', async () => {
+        showLoading();
+        try {
+            const response = await fetch('/generate_quiz');
+            if (!response.ok) throw new Error('Failed to generate quiz');
+            
+            const quiz = await response.json();
+            hideLoading();
+            displayQuiz(quiz);
+        } catch (error) {
+            console.error('Error generating quiz:', error);
+            hideLoading();
+            addMessage('Sorry, I encountered an error generating the quiz. Please try again.');
+        }
+    });
 });
