@@ -4,69 +4,36 @@
 
 {% block content %}
 <div class="chat-container">
-    <div class="user-menu">
-        <div class="user-info">
-            <i class="fas fa-user"></i>
-            <span>{{ current_user.first_name }}</span>
-        </div>
-        <a href="{{ url_for('auth.logout') }}" class="logout-btn">
-            <i class="fas fa-sign-out-alt"></i>
-            Logout
-        </a>
-    </div>
-    
     <div class="chat-header">
+        <h1>👋 Hi! I'm Buddy, Your Learning Friend!</h1>
+        <p>Ask me anything - I'm here to help you learn and have fun! 🌟</p>
         <div class="header-buttons">
-            <a href="{{ url_for('dashboard') }}" class="header-button">
+            <a href="{{ url_for('progress.dashboard') }}" class="header-button">
                 <i class="fas fa-chart-bar"></i>
                 Dashboard
             </a>
-            <a href="{{ url_for('auth.logout') }}" class="header-button">
-                <i class="fas fa-sign-out-alt"></i>
-                Logout
-            </a>
-        </div>
-        <h1>👋 Hi! I'm Buddy, Your Learning Friend!</h1>
-        <p>Ask me anything - I'm here to help you learn and have fun! 🌟</p>
-        <div class="feature-buttons">
-            <button id="voice-input" title="Speak your question">
-                <i class="fas fa-microphone"></i>
-            </button>
-            <button id="generate-quiz" title="Generate a quiz">
-                <i class="fas fa-question-circle"></i>
-            </button>
         </div>
     </div>
     <div class="chat-messages" id="chat-messages">
-        <div class="message bot-message">
-            <div class="message-content">
-                Hello! 😊 I'm Buddy, your friendly learning assistant! I'm here to help you discover amazing things and answer all your curious questions. What would you like to learn about today? 🌟
-            </div>
-        </div>
+        <!-- Messages will appear here -->
     </div>
     <div id="loading" class="loading hidden">
         <div class="spinner"></div>
-        <p>Thinking... 🤔</p>
     </div>
     <div id="quiz-container" class="quiz-container hidden">
-        <div class="quiz-header">
-            <h3>Fun Quiz Time! 🎯</h3>
-            <button class="close-button" id="close-quiz">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="quiz-content">
-            <h3 class="quiz-question"></h3>
-            <div class="quiz-options"></div>
-            <div class="quiz-feedback"></div>
-        </div>
+        <!-- Quiz will appear here -->
     </div>
     <div id="tip-container" class="tip-container hidden">
-        <div class="tip-content"></div>
+        <!-- Tips will appear here -->
     </div>
     <div class="chat-input-container">
-        <input type="text" id="user-input" placeholder="Type your question here...">
-        <button id="send-button">Send 🚀</button>
+        <input type="text" id="user-input" placeholder="Type your message here..." autofocus>
+        <button id="quiz-button" class="feature-button" title="Generate a quiz about this topic">
+            <i class="fas fa-question-circle"></i> Quiz Me!
+        </button>
+        <button id="send-button">
+            <i class="fas fa-paper-plane"></i> Send
+        </button>
     </div>
 </div>
 {% endblock %}

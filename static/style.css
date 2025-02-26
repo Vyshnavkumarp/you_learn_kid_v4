@@ -70,37 +70,183 @@ body {
     font-size: 16px;
 }
 
+/* Dashboard Styles */
 .dashboard-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 25px;
-    margin-top: 80px;
+    gap: 20px;
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
+/* Fix dashboard card styling */
 .dashboard-card {
-    background: white;
-    border-radius: 20px;
-    padding: 25px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    position: relative;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    padding: 20px;
+    transition: transform 0.3s ease;
+    position: relative; /* Add this to make ::before work properly */
+    margin-top: 10px; /* Add space for the gradient border */
+    border-top: 5px solid transparent; /* Reserve space for the gradient */
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+}
+
+.dashboard-card h2 {
+    color: #4CAF50;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.5rem;
+}
+
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 15px;
+}
+
+.stat-card {
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.stat-card i {
+    font-size: 24px;
+    color: #4CAF50;
+    margin-bottom: 10px;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #333;
+    margin: 5px 0;
+}
+
+.stat-label {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* Progress Bar */
+.progress-bar {
+    height: 12px;
+    background-color: #e0e0e0;
+    border-radius: 6px;
+    margin: 15px 0;
     overflow: hidden;
 }
 
+.progress-fill {
+    height: 100%;
+    background-color: #4CAF50;
+    border-radius: 6px;
+    transition: width 0.5s ease;
+}
+
+/* Achievements Grid */
+.achievements-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 15px;
+}
+
+.achievement-card {
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.achievement-card:hover {
+    transform: scale(1.05);
+}
+
+.achievement-icon {
+    background-color: #4CAF50;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px;
+    font-size: 18px;
+}
+
+.achievement-name {
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.achievement-points {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.achievement-card.locked {
+    opacity: 0.6;
+    filter: grayscale(1);
+}
+
+.achievement-card.locked .achievement-icon {
+    background-color: #999;
+}
+
+/* Chart Container */
+.chart-container {
+    width: 100%;
+    height: 250px;
+    margin-top: 15px;
+}
+
+/* Streak Calendar */
+.streak-calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    margin-top: 15px;
+}
+
+.calendar-day {
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    background-color: #f1f1f1;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.calendar-day.active {
+    background-color: #4CAF50;
+    color: white;
+    font-weight: bold;
+}
+
+/* Simplify the ::before element to avoid positioning issues */
 .dashboard-card::before {
     content: '';
     position: absolute;
-    top: 0;
+    top: -5px; /* Align with the border-top */
     left: 0;
     right: 0;
     height: 5px;
     background: linear-gradient(90deg, #4CAF50, #2196F3);
     border-radius: 5px 5px 0 0;
-}
-
-.dashboard-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15);
 }
 
 h2 {
@@ -280,13 +426,17 @@ h2 i {
     box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
 }
 
+/* Chat Container Styles */
 .chat-container {
-    max-width: 800px;
-    margin: 80px auto 0;
-    background: white;
+    max-width: 900px;
+    margin: 60px auto 20px;
+    background-color: white;
     border-radius: 20px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 80vh;
 }
 
 .chat-header {
@@ -294,22 +444,59 @@ h2 i {
     color: white;
     padding: 20px;
     text-align: center;
+    border-radius: 20px 20px 0 0;
+    position: relative;
 }
 
 .chat-header h1 {
-    margin: 0;
     font-size: 24px;
+    margin-bottom: 10px;
 }
 
 .chat-header p {
-    margin: 10px 0 0;
+    font-size: 16px;
     opacity: 0.9;
 }
 
+.header-buttons {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    display: flex;
+    gap: 10px;
+}
+
+.header-button {
+    padding: 8px 15px;
+    background-color: rgba(255,255,255,0.2);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.header-button:hover {
+    background-color: rgba(255,255,255,0.3);
+    transform: translateY(-2px);
+}
+
+.feature-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 15px;
+}
+
 .chat-messages {
+    flex: 1;
     padding: 20px;
-    height: 500px;
     overflow-y: auto;
+    background-color: #f8f9fa;
 }
 
 .message {
@@ -323,58 +510,276 @@ h2 i {
     padding: 12px 16px;
     border-radius: 15px;
     font-size: 16px;
-    line-height: 1.4;
+    line-height: 1.5;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.bot-message {
+    align-items: flex-start;
 }
 
 .bot-message .message-content {
-    background: #f0f7ff;
+    background-color: white;
+    color: #333;
     border-top-left-radius: 5px;
-    align-self: flex-start;
+}
+
+.user-message {
+    align-items: flex-end;
 }
 
 .user-message .message-content {
-    background: #4CAF50;
+    background: linear-gradient(135deg, #4CAF50, #45a049);
     color: white;
     border-top-right-radius: 5px;
-    align-self: flex-end;
 }
 
+/* Quiz Button Styles */
+#quiz-button {
+    padding: 10px 15px;
+    background: linear-gradient(135deg, #FF9800, #F57C00);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 15px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 4px 6px rgba(255, 152, 0, 0.2);
+    margin-right: 8px;
+}
+
+#quiz-button:hover {
+    background: linear-gradient(135deg, #F57C00, #E65100);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(255, 152, 0, 0.3);
+}
+
+#quiz-button i {
+    font-size: 16px;
+}
+
+/* Update chat input container for the new button */
 .chat-input-container {
-    padding: 20px;
-    background: #f8f9fa;
-    border-top: 1px solid #e9ecef;
+    padding: 15px;
+    background: white;
     display: flex;
     gap: 10px;
+    align-items: center;
+    border-top: 1px solid #eaeaea;
 }
 
+/* Make sure input takes appropriate space with the new button */
 #user-input {
     flex: 1;
-    padding: 12px;
-    border: 2px solid #e9ecef;
-    border-radius: 25px;
-    font-size: 16px;
-    transition: border-color 0.3s;
-}
-
-#user-input:focus {
-    outline: none;
-    border-color: #4CAF50;
 }
 
 #send-button {
-    padding: 12px 24px;
-    background: #4CAF50;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #4CAF50, #45a049);
     color: white;
     border: none;
     border-radius: 25px;
     cursor: pointer;
     transition: all 0.3s;
     font-size: 16px;
+    font-weight: bold;
 }
 
 #send-button:hover {
-    background: #45a049;
+    background: linear-gradient(135deg, #45a049, #388E3C);
     transform: translateY(-2px);
+}
+
+/* Loading spinner */
+.loading {
+    display: flex;
+    justify-content: center;
+    margin: 15px 0;
+}
+
+.loading.hidden {
+    display: none;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(76, 175, 80, 0.2);
+    border-top-color: #4CAF50;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Quiz Container Styles */
+.quiz-container {
+    margin: 15px;
+    background-color: #fff;
+    border-radius: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.quiz-container.hidden {
+    display: none;
+}
+
+.quiz-header {
+    padding: 15px;
+    background-color: #4CAF50;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.quiz-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.close-button {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.quiz-content {
+    padding: 20px;
+}
+
+.quiz-question {
+    margin-bottom: 15px;
+    color: #2c3e50;
+    font-size: 18px;
+}
+
+.quiz-options {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.quiz-option {
+    padding: 12px;
+    background-color: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    text-align: left;
+}
+
+.quiz-option:hover {
+    background-color: #e9ecef;
+}
+
+.quiz-option.correct {
+    background-color: #e8f5e9;
+    border-color: #4CAF50;
+}
+
+.quiz-option.incorrect {
+    background-color: #ffebee;
+    border-color: #f44336;
+}
+
+.quiz-feedback {
+    margin-top: 15px;
+}
+
+.quiz-feedback.hidden {
+    display: none;
+}
+
+.quiz-feedback-content {
+    padding: 10px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.quiz-feedback-content.correct {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.quiz-feedback-content.incorrect {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.quiz-completion {
+    text-align: center;
+    padding: 20px;
+}
+
+.quiz-completion h3 {
+    margin-bottom: 15px;
+    color: #4CAF50;
+    font-size: 24px;
+}
+
+.xp-earned {
+    font-weight: bold;
+    color: #ff9800;
+    font-size: 18px;
+    margin: 15px 0;
+}
+
+.quiz-done-button {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+}
+
+.quiz-done-button:hover {
+    background-color: #45a049;
+    transform: translateY(-2px);
+}
+
+/* Tip Container */
+.tip-container {
+    margin: 15px;
+    padding: 15px;
+    background-color: #fff3e0;
+    border-left: 4px solid #ff9800;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tip-container.hidden {
+    display: none;
+}
+
+.tip-container::before {
+    content: '💡';
+    font-size: 24px;
+}
+
+.tip-content {
+    font-size: 14px;
+    color: #795548;
 }
 
 @media (max-width: 768px) {
@@ -393,5 +798,71 @@ h2 i {
     
     .message-content {
         max-width: 90%;
+    }
+    
+    .header-buttons {
+        position: static;
+        justify-content: center;
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .chat-header h1 {
+        font-size: 20px;
+    }
+    
+    .chat-header p {
+        font-size: 14px;
+    }
+    
+    .chat-messages {
+        height: 350px;
+    }
+    
+    .quiz-options {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Make quiz button more prominent for children */
+@media (max-width: 500px) {
+    .chat-input-container {
+        flex-wrap: wrap;
+    }
+    
+    #user-input {
+        flex-basis: 100%;
+        margin-bottom: 10px;
+    }
+    
+    #quiz-button {
+        flex: 1;
+    }
+    
+    #send-button {
+        flex: 1;
+    }
+}
+
+/* Small screen adjustments */
+@media (max-width: 480px) {
+    .stat-card {
+        padding: 10px;
+    }
+    
+    .stat-value {
+        font-size: 20px;
+    }
+    
+    .stat-label {
+        font-size: 12px;
+    }
+    
+    #send-button {
+        padding: 12px;
+    }
+    
+    #user-input {
+        padding: 12px;
     }
 }

@@ -44,60 +44,68 @@ def register():
     
     if request.method == 'POST':
         try:
+            username = request.form.get('username')
+            email = request.form.get('email')
+            password = request.form.get('password')
+            first_name = request.form.get('first_name')
+            last_name = request.form.get('last_name', '')
+            age = request.form.get('age')
+            parent_email = request.form.get('parent_email', None)
+            
             # Validate required fields
             required_fields = ['username', 'email', 'password', 'first_name', 'age']
             for field in required_fields:
                 if not request.form.get(field):
-                    flash(f'Missing required field: {field}', 'error')
+                    flash(f'{field.replace("_", " ").title()} is required', 'error')
                     return render_template('register.html')
             
             # Validate email format
             try:
-                valid = validate_email(request.form['email'])
+                valid = validate_email(email)
                 email = valid.email
             except EmailNotValidError as e:
-                flash(str(e), 'error')
+                flash(f'Invalid email: {str(e)}', 'error')
                 return render_template('register.html')
+            
+            # If parent_email is provided, validate it
+            if parent_email:
+                try:
+                    valid_parent = validate_email(parent_email)
+                    parent_email = valid_parent.email
+                except EmailNotValidError:
+                    parent_email = None  # Reset if invalid
             
             # Check if username or email already exists
-            if User.query.filter_by(username=request.form['username']).first():
+            if User.query.filter_by(username=username).first():
                 flash('Username already exists', 'error')
                 return render_template('register.html')
+                
             if User.query.filter_by(email=email).first():
-                flash('Email already exists', 'error')
-                return render_template('register.html')
-            
-            # Validate age
-            try:
-                age = int(request.form['age'])
-                if not (5 <= age <= 12):
-                    flash('Age must be between 5 and 12', 'error')
-                    return render_template('register.html')
-            except ValueError:
-                flash('Invalid age', 'error')
+                flash('Email already registered', 'error')
                 return render_template('register.html')
             
             # Create new user
-            user = User(
-                username=request.form['username'],
+            new_user = User(
+                username=username,
                 email=email,
-                first_name=request.form['first_name'],
-                last_name=request.form.get('last_name'),
-                age=age,
-                parent_email=request.form.get('parent_email')
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                age=int(age),
+                parent_email=parent_email
             )
-            user.password = request.form['password']  # This will hash the password
             
-            db.session.add(user)
+            db.session.add(new_user)
             db.session.commit()
             
-            # Log in the new user
-            login_user(user)
+            # Log the user in
+            login_user(new_user)
+            
             return redirect(url_for('chat'))
             
         except Exception as e:
             db.session.rollback()
-            flash('Error creating account: ' + str(e), 'error')
+            flash(f'An error occurred during registration: {str(e)}', 'error')
             return render_template('register.html')
 
 @auth.route('/logout')

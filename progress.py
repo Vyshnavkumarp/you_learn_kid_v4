@@ -1,163 +1,135 @@
 from flask import Blueprint, jsonify, request, render_template
 from flask_login import login_required, current_user
-from models import db, QuizAttempt, Achievement, UserAchievement, LearningSession
+from models import db, User, QuizAttempt, Achievement, UserAchievement, LearningSession
 from datetime import datetime, timedelta, date
-import calendar
+import os
+import random
 
 progress = Blueprint('progress', __name__)
 
 @progress.route('/dashboard')
 @login_required
 def dashboard():
-    """Render the user's dashboard"""
-    try:
-        # Calculate XP needed for next level (1000 XP per level)
-        xp_for_next_level = (current_user.level + 1) * 1000
-        xp_in_current_level = current_user.total_xp - (current_user.level * 1000)
-        level_progress = (xp_in_current_level / 1000) * 100
-        xp_needed = xp_for_next_level - current_user.total_xp
-
-        # Get achievements
-        all_achievements = Achievement.query.all()
-        user_achievements = UserAchievement.query.filter_by(user_id=current_user.id).all()
-        earned_achievement_ids = [ua.achievement_id for ua in user_achievements]
-        
-        achievements_data = []
-        for achievement in all_achievements:
-            achievements_data.append({
-                'name': achievement.name,
-                'description': achievement.description,
-                'points': achievement.points,
-                'icon': achievement.icon,
-                'earned': achievement.id in earned_achievement_ids
-            })
-
-        # Get activity data (last 7 days)
-        today = date.today()
-        activity_labels = []
-        activity_data = []
-        
-        for i in range(6, -1, -1):
-            day = today - timedelta(days=i)
-            activity_labels.append(day.strftime('%a'))
-            
-            # Get XP earned on this day
-            daily_quizzes = QuizAttempt.query.filter(
-                QuizAttempt.user_id == current_user.id,
-                db.func.date(QuizAttempt.created_at) == day
-            ).all()
-            
-            daily_xp = sum(quiz.score for quiz in daily_quizzes)
-            activity_data.append(daily_xp)
-
-        # Generate calendar days (last 28 days)
-        calendar_days = []
-        active_days = set()
-        
-        # Get active days from quiz attempts
-        active_day_records = db.session.query(
-            db.func.date(QuizAttempt.created_at)
-        ).filter(
-            QuizAttempt.user_id == current_user.id,
-            QuizAttempt.created_at >= today - timedelta(days=28)
-        ).distinct().all()
-        
-        active_days = set(day[0] for day in active_day_records)
-        
-        for i in range(27, -1, -1):
-            day = today - timedelta(days=i)
-            calendar_days.append({
-                'day': day.day,
-                'date': day.strftime('%Y-%m-%d'),
-                'active': day in active_days
-            })
-
-        return render_template('dashboard.html',
-            level_progress=round(level_progress, 1),
-            xp_needed=xp_needed,
-            achievements=achievements_data,
-            activity_labels=activity_labels,
-            activity_data=activity_data,
-            calendar_days=calendar_days
-        )
-        
-    except Exception as e:
-        print(f"Error rendering dashboard: {str(e)}")
-        return render_template('dashboard.html',
-            level_progress=0,
-            xp_needed=1000,
-            achievements=[],
-            activity_labels=[],
-            activity_data=[],
-            calendar_days=[]
-        )
+    # Calculate level progress
+    current_level = current_user.level
+    xp_for_next_level = current_level * 100  # Simple progression formula
+    current_xp_in_level = current_user.total_xp - ((current_level - 1) * 100)
+    level_progress = int((current_xp_in_level / xp_for_next_level) * 100)
+    xp_needed = xp_for_next_level - current_xp_in_level
+    
+    # Get user's achievements
+    user_achievements = UserAchievement.query.filter_by(user_id=current_user.id).all()
+    earned_achievement_ids = [ua.achievement_id for ua in user_achievements]
+    
+    # Get all achievements with earned status
+    achievements = []
+    all_achievements = Achievement.query.all()
+    for achievement in all_achievements:
+        achievements.append({
+            'name': achievement.name,
+            'description': achievement.description,
+            'points': achievement.points,
+            'icon': get_achievement_icon(achievement.category),
+            'earned': achievement.id in earned_achievement_ids
+        })
+    
+    # Get activity data for chart
+    today = date.today()
+    start_date = today - timedelta(days=14)  # Last 14 days
+    
+    # Query learning sessions for activity chart
+    sessions = LearningSession.query.filter(
+        LearningSession.user_id == current_user.id,
+        LearningSession.created_at >= start_date
+    ).all()
+    
+    # Build activity data by day
+    activity_data = [0] * 14
+    activity_labels = []
+    for i in range(14):
+        day = start_date + timedelta(days=i)
+        activity_labels.append(day.strftime('%b %d'))
+        # Sum XP for this day
+        day_xp = sum([s.xp_earned for s in sessions if s.created_at.date() == day])
+        activity_data[i] = day_xp
+    
+    # Generate calendar days (last 28 days)
+    calendar_days = []
+    for i in range(27, -1, -1):
+        day = today - timedelta(days=i)
+        day_active = any(s.created_at.date() == day for s in sessions)
+        calendar_days.append({
+            'day': day.day,
+            'date': day.strftime('%b %d, %Y'),
+            'active': day_active
+        })
+    
+    return render_template('dashboard.html', 
+                           level_progress=level_progress,
+                           xp_needed=xp_needed,
+                           achievements=achievements,
+                           activity_data=activity_data,
+                           activity_labels=activity_labels,
+                           calendar_days=calendar_days)
 
 @progress.route('/stats', methods=['GET'])
 @login_required
 def get_stats():
-    """Get user's learning statistics"""
-    try:
-        # Get recent quiz attempts
-        recent_quizzes = QuizAttempt.query.filter_by(user_id=current_user.id)\
-            .order_by(QuizAttempt.created_at.desc())\
-            .limit(5)\
-            .all()
-        
-        # Calculate average score
-        all_quizzes = QuizAttempt.query.filter_by(user_id=current_user.id).all()
-        avg_score = sum(q.score / q.max_score * 100 for q in all_quizzes) / len(all_quizzes) if all_quizzes else 0
-        
-        # Get total learning time
-        learning_sessions = LearningSession.query.filter_by(user_id=current_user.id).all()
-        total_time = sum(session.duration for session in learning_sessions if session.duration)
-        
-        # Get achievements
-        achievements = UserAchievement.query.filter_by(user_id=current_user.id)\
-            .order_by(UserAchievement.earned_at.desc())\
-            .all()
-        
-        return jsonify({
-            'level': current_user.level,
-            'total_xp': current_user.total_xp,
-            'login_streak': current_user.login_streak,
-            'quiz_stats': {
-                'total_quizzes': len(all_quizzes),
-                'average_score': round(avg_score, 2),
-                'recent_quizzes': [q.to_dict() for q in recent_quizzes]
-            },
-            'learning_time': {
-                'total_seconds': total_time,
-                'hours': total_time // 3600,
-                'minutes': (total_time % 3600) // 60
-            },
-            'achievements': [a.to_dict() for a in achievements]
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    # Get basic stats
+    stats = {
+        'total_xp': current_user.total_xp,
+        'level': current_user.level,
+        'login_streak': current_user.login_streak
+    }
+    
+    # Get quiz stats
+    quiz_attempts = QuizAttempt.query.filter_by(user_id=current_user.id).all()
+    stats['total_quizzes'] = len(quiz_attempts)
+    if quiz_attempts:
+        stats['avg_score'] = sum([q.score / q.max_score * 100 for q in quiz_attempts]) / len(quiz_attempts)
+    else:
+        stats['avg_score'] = 0
+    
+    return jsonify(stats)
 
 @progress.route('/quiz-attempt', methods=['POST'])
 @login_required
 def record_quiz_attempt():
-    """Record a quiz attempt and update user progress"""
     try:
         data = request.json
+        
+        # Validate required fields
+        required_fields = ['topic', 'score', 'max_score']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Create quiz attempt
         quiz = QuizAttempt(
             user_id=current_user.id,
             topic=data['topic'],
             score=data['score'],
             max_score=data['max_score']
         )
-        db.session.add(quiz)
         
-        # Add XP based on score
-        xp_earned = int((quiz.score / quiz.max_score) * 100)
+        # Add XP based on score percentage
+        score_percentage = quiz.score / quiz.max_score
+        xp_earned = int(10 * score_percentage)  # Max 10 XP for perfect score
         current_user.add_xp(xp_earned)
         
-        # Check for achievements
+        db.session.add(quiz)
+        db.session.commit()
+        
+        # Check for quiz-related achievements
         check_quiz_achievements(quiz)
         
-        db.session.commit()
-        return jsonify({'message': 'Quiz attempt recorded', 'xp_earned': xp_earned})
+        return jsonify({
+            'message': 'Quiz attempt recorded successfully',
+            'xp_earned': xp_earned,
+            'new_total_xp': current_user.total_xp,
+            'level': current_user.level
+        })
+        
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -165,165 +137,172 @@ def record_quiz_attempt():
 @progress.route('/learning-session', methods=['POST'])
 @login_required
 def record_learning_session():
-    """Record a learning session"""
     try:
         data = request.json
+        
+        # Validate required fields
+        required_fields = ['topic', 'duration_minutes']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Create learning session
         session = LearningSession(
             user_id=current_user.id,
             topic=data['topic'],
-            duration=data['duration'],
-            started_at=datetime.fromisoformat(data['started_at']),
-            ended_at=datetime.fromisoformat(data['ended_at'])
+            duration_minutes=data['duration_minutes']
         )
+        
+        # Add XP based on duration (1 XP per minute, max 20)
+        xp_earned = min(data['duration_minutes'], 20)
+        current_user.add_xp(xp_earned)
+        session.xp_earned = xp_earned
+        
         db.session.add(session)
+        db.session.commit()
         
-        # Add XP based on duration (1 XP per minute, max 60 XP per session)
-        minutes = min(session.duration // 60, 60)
-        current_user.add_xp(minutes)
-        
-        # Check for achievements
+        # Check for learning-related achievements
         check_learning_achievements(session)
         
-        db.session.commit()
-        return jsonify({'message': 'Learning session recorded', 'xp_earned': minutes})
+        return jsonify({
+            'message': 'Learning session recorded successfully',
+            'xp_earned': xp_earned,
+            'new_total_xp': current_user.total_xp,
+            'level': current_user.level
+        })
+        
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+def get_achievement_icon(category):
+    """Return Font Awesome icon class based on achievement category"""
+    icons = {
+        'quiz': 'fa-question-circle',
+        'streak': 'fa-fire',
+        'learning': 'fa-book',
+        'level': 'fa-layer-group',
+        'xp': 'fa-star'
+    }
+    return icons.get(category, 'fa-award')
+
 def check_quiz_achievements(quiz):
     """Check and award quiz-related achievements"""
     try:
-        # Get all quiz attempts for the user
-        user_quizzes = QuizAttempt.query.filter_by(user_id=current_user.id).all()
-        total_quizzes = len(user_quizzes)
-        perfect_scores = sum(1 for q in user_quizzes if q.score == q.max_score)
+        user_id = quiz.user_id
         
-        # Define achievement conditions
-        achievement_conditions = {
-            'quiz_novice': total_quizzes >= 5,
-            'quiz_master': total_quizzes >= 50,
-            'perfect_score': quiz.score == quiz.max_score,
-            'perfect_streak': perfect_scores >= 5
-        }
+        # Get count of user's quiz attempts
+        quiz_count = QuizAttempt.query.filter_by(user_id=user_id).count()
         
-        # Check each achievement
-        for achievement_name, condition in achievement_conditions.items():
-            if condition:
-                achievement = Achievement.query.filter_by(name=achievement_name).first()
-                if achievement:
-                    existing = UserAchievement.query.filter_by(
-                        user_id=current_user.id,
-                        achievement_id=achievement.id
-                    ).first()
-                    
-                    if not existing:
-                        user_achievement = UserAchievement(
-                            user_id=current_user.id,
-                            achievement_id=achievement.id
-                        )
-                        db.session.add(user_achievement)
-                        current_user.add_xp(achievement.points)
-                        
+        # Check for first quiz achievement
+        if quiz_count == 1:
+            award_achievement(user_id, 'First Quiz')
+            
+        # Check for 10 quizzes achievement
+        if quiz_count == 10:
+            award_achievement(user_id, 'Quiz Master')
+            
+        # Check for perfect score achievement
+        if quiz.score == quiz.max_score:
+            award_achievement(user_id, 'Perfect Score')
+            
+        # Check topic specific achievements
+        if 'math' in quiz.topic.lower():
+            award_achievement(user_id, 'Math Explorer')
+        elif 'science' in quiz.topic.lower():
+            award_achievement(user_id, 'Science Whiz')
+            
     except Exception as e:
         print(f"Error checking quiz achievements: {str(e)}")
 
 def check_learning_achievements(session):
     """Check and award learning time achievements"""
     try:
+        user_id = session.user_id
+        
         # Get total learning time
-        total_time = db.session.query(db.func.sum(LearningSession.duration))\
-            .filter_by(user_id=current_user.id)\
-            .scalar() or 0
+        total_minutes = db.session.query(db.func.sum(LearningSession.duration_minutes))\
+            .filter_by(user_id=user_id).scalar() or 0
+            
+        # Check for time-based achievements
+        if total_minutes >= 60:  # 1 hour
+            award_achievement(user_id, 'Learning Hour')
         
-        # Define achievement conditions (time in seconds)
-        achievement_conditions = {
-            'time_1hour': total_time >= 3600,
-            'time_5hours': total_time >= 18000,
-            'time_10hours': total_time >= 36000
-        }
+        if total_minutes >= 300:  # 5 hours
+            award_achievement(user_id, 'Learning Expert')
         
-        # Check each achievement
-        for achievement_name, condition in achievement_conditions.items():
-            if condition:
-                achievement = Achievement.query.filter_by(name=achievement_name).first()
-                if achievement:
-                    existing = UserAchievement.query.filter_by(
-                        user_id=current_user.id,
-                        achievement_id=achievement.id
-                    ).first()
-                    
-                    if not existing:
-                        user_achievement = UserAchievement(
-                            user_id=current_user.id,
-                            achievement_id=achievement.id
-                        )
-                        db.session.add(user_achievement)
-                        current_user.add_xp(achievement.points)
-                        
+        # Check for diverse learning
+        topic_count = db.session.query(db.func.count(db.func.distinct(LearningSession.topic)))\
+            .filter_by(user_id=user_id).scalar() or 0
+            
+        if topic_count >= 3:
+            award_achievement(user_id, 'Curious Mind')
+            
     except Exception as e:
         print(f"Error checking learning achievements: {str(e)}")
 
+def award_achievement(user_id, achievement_name):
+    """Award an achievement to a user if they don't already have it"""
+    # Find the achievement
+    achievement = Achievement.query.filter_by(name=achievement_name).first()
+    if not achievement:
+        return
+        
+    # Check if user already has this achievement
+    existing = UserAchievement.query.filter_by(
+        user_id=user_id, 
+        achievement_id=achievement.id
+    ).first()
+    
+    if existing:
+        return  # User already has this achievement
+        
+    # Award the achievement
+    user_achievement = UserAchievement(
+        user_id=user_id,
+        achievement_id=achievement.id,
+        earned_at=datetime.utcnow()
+    )
+    
+    # Add XP for earning achievement
+    user = User.query.get(user_id)
+    if user:
+        user.add_xp(achievement.points)
+        
+    db.session.add(user_achievement)
+    db.session.commit()
+
 def initialize_achievements():
     """Initialize default achievements in the database"""
-    default_achievements = [
-        {
-            'name': 'quiz_novice',
-            'description': 'Complete 5 quizzes',
-            'category': 'quiz',
-            'points': 50,
-            'icon': 'fa-star'
-        },
-        {
-            'name': 'quiz_master',
-            'description': 'Complete 50 quizzes',
-            'category': 'quiz',
-            'points': 200,
-            'icon': 'fa-crown'
-        },
-        {
-            'name': 'perfect_score',
-            'description': 'Get a perfect score on a quiz',
-            'category': 'quiz',
-            'points': 100,
-            'icon': 'fa-check-circle'
-        },
-        {
-            'name': 'perfect_streak',
-            'description': 'Get 5 perfect scores in a row',
-            'category': 'quiz',
-            'points': 300,
-            'icon': 'fa-fire'
-        },
-        {
-            'name': 'time_1hour',
-            'description': 'Spend 1 hour learning',
-            'category': 'time',
-            'points': 100,
-            'icon': 'fa-clock'
-        },
-        {
-            'name': 'time_5hours',
-            'description': 'Spend 5 hours learning',
-            'category': 'time',
-            'points': 300,
-            'icon': 'fa-hourglass'
-        },
-        {
-            'name': 'time_10hours',
-            'description': 'Spend 10 hours learning',
-            'category': 'time',
-            'points': 500,
-            'icon': 'fa-graduation-cap'
-        }
+    achievements = [
+        # Quiz achievements
+        {'name': 'First Quiz', 'description': 'Complete your first quiz', 'category': 'quiz', 'points': 10},
+        {'name': 'Quiz Master', 'description': 'Complete 10 quizzes', 'category': 'quiz', 'points': 30},
+        {'name': 'Perfect Score', 'description': 'Get a perfect score on a quiz', 'category': 'quiz', 'points': 25},
+        
+        # Learning achievements
+        {'name': 'Learning Hour', 'description': 'Spend 60 minutes learning', 'category': 'learning', 'points': 20},
+        {'name': 'Learning Expert', 'description': 'Spend 5 hours learning', 'category': 'learning', 'points': 50},
+        {'name': 'Curious Mind', 'description': 'Explore at least 3 different topics', 'category': 'learning', 'points': 15},
+        
+        # Streak achievements
+        {'name': 'Just Getting Started', 'description': 'Log in for 3 days in a row', 'category': 'streak', 'points': 15},
+        {'name': 'Weekly Warrior', 'description': 'Log in for 7 days in a row', 'category': 'streak', 'points': 30},
+        
+        # Level achievements
+        {'name': 'Level Up', 'description': 'Reach level 2', 'category': 'level', 'points': 20},
+        {'name': 'Rising Star', 'description': 'Reach level 5', 'category': 'level', 'points': 50},
+        
+        # Subject achievements
+        {'name': 'Math Explorer', 'description': 'Complete a math quiz', 'category': 'quiz', 'points': 10},
+        {'name': 'Science Whiz', 'description': 'Complete a science quiz', 'category': 'quiz', 'points': 10}
     ]
     
-    try:
-        for achievement_data in default_achievements:
-            existing = Achievement.query.filter_by(name=achievement_data['name']).first()
-            if not existing:
-                achievement = Achievement(**achievement_data)
-                db.session.add(achievement)
+    # Check if achievements already exist
+    if Achievement.query.count() == 0:
+        for achievement_data in achievements:
+            achievement = Achievement(**achievement_data)
+            db.session.add(achievement)
+        
         db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error initializing achievements: {str(e)}")
+        print("Achievements initialized successfully")

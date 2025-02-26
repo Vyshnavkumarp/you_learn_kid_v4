@@ -2,33 +2,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatMessages = document.getElementById('chat-messages');
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
+    const quizButton = document.getElementById('quiz-button'); // Add this line
     const voiceButton = document.getElementById('voice-input');
     const quizContainer = document.getElementById('quiz-container');
     const tipContainer = document.getElementById('tip-container');
     const loadingElement = document.getElementById('loading');
-    const closeQuizButton = document.getElementById('close-quiz');
-
+    
     let currentQuiz = null;
+    let currentQuestionIndex = 0;
+    let quizScore = 0;
     let isProcessing = false;
 
     function addMessage(message, isUser = false) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
-        
-        const messageContent = document.createElement('div');
-        messageContent.className = 'message-content';
-        messageContent.textContent = message;
-        
-        messageDiv.appendChild(messageContent);
+        messageDiv.classList.add('message');
+        messageDiv.classList.add(isUser ? 'user-message' : 'bot-message');
+
+        const contentDiv = document.createElement('div');
+        contentDiv.classList.add('message-content');
+        contentDiv.innerHTML = message;
+
+        messageDiv.appendChild(contentDiv);
         chatMessages.appendChild(messageDiv);
-        
-        // Scroll to bottom
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     function showLoading() {
         loadingElement.classList.remove('hidden');
-        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     function hideLoading() {
@@ -37,43 +37,93 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function displayQuiz(quiz) {
         currentQuiz = quiz;
-        const quizContent = quizContainer.querySelector('.quiz-content');
-        const questionElement = quizContent.querySelector('.quiz-question');
-        const optionsElement = quizContent.querySelector('.quiz-options');
-        const feedbackElement = quizContent.querySelector('.quiz-feedback');
+        currentQuestionIndex = 0;
+        quizScore = 0;
         
-        questionElement.textContent = quiz.question;
-        optionsElement.innerHTML = '';
-        feedbackElement.innerHTML = '';
+        // Create quiz container HTML
+        quizContainer.innerHTML = `
+            <div class="quiz-header">
+                <h3>🎮 Quiz: ${quiz.topic}</h3>
+                <button id="close-quiz" class="close-button">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="quiz-content">
+                <div class="quiz-question">${quiz.questions[0].question}</div>
+                <div class="quiz-options">
+                    ${quiz.questions[0].options.map((option, index) => 
+                        `<button class="quiz-option" data-index="${index}">${option}</button>`
+                    ).join('')}
+                </div>
+                <div class="quiz-feedback hidden"></div>
+            </div>
+        `;
         
-        quiz.options.forEach((option, index) => {
-            const button = document.createElement('button');
-            button.className = 'quiz-option';
-            button.textContent = option;
-            button.onclick = () => checkAnswer(index);
-            optionsElement.appendChild(button);
+        // Show the quiz container
+        quizContainer.classList.remove('hidden');
+        
+        // Add event listeners to answer buttons
+        const optionButtons = quizContainer.querySelectorAll('.quiz-option');
+        optionButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const selectedIndex = parseInt(button.getAttribute('data-index'));
+                checkAnswer(selectedIndex);
+            });
         });
         
-        quizContainer.classList.remove('hidden');
+        // Add event listener to close button
+        const closeButton = document.getElementById('close-quiz');
+        closeButton.addEventListener('click', closeQuiz);
     }
 
     function displayTip(tip) {
-        const tipContent = tipContainer.querySelector('.tip-content');
-        tipContent.textContent = tip;
+        tipContainer.innerHTML = `<div class="tip-content">${tip}</div>`;
         tipContainer.classList.remove('hidden');
+        
+        // Hide tip after 10 seconds
+        setTimeout(() => {
+            tipContainer.classList.add('hidden');
+        }, 10000);
     }
 
     async function checkAnswer(selectedIndex) {
         if (!currentQuiz) return;
         
-        const quizContent = quizContainer.querySelector('.quiz-content');
-        const optionsElement = quizContent.querySelector('.quiz-options');
-        const feedbackElement = quizContent.querySelector('.quiz-feedback');
-        const buttons = optionsElement.querySelectorAll('button');
+        const question = currentQuiz.questions[currentQuestionIndex];
+        const isCorrect = selectedIndex === question.correct_index;
         
-        // Disable all buttons
-        buttons.forEach(button => button.disabled = true);
+        // Disable all option buttons
+        const optionButtons = quizContainer.querySelectorAll('.quiz-option');
+        optionButtons.forEach(button => button.disabled = true);
         
+        // Highlight correct and selected answers
+        optionButtons.forEach((button, index) => {
+            if (index === question.correct_index) {
+                button.classList.add('correct');
+            } else if (index === selectedIndex && !isCorrect) {
+                button.classList.add('incorrect');
+            }
+        });
+        
+        // Show feedback
+        const feedbackDiv = quizContainer.querySelector('.quiz-feedback');
+        feedbackDiv.innerHTML = `
+            <div class="quiz-feedback-content ${isCorrect ? 'correct' : 'incorrect'}">
+                <i class="fas fa-${isCorrect ? 'check' : 'times'}-circle"></i>
+                <p>${isCorrect ? 'Great job!' : 'Oops, not quite.'} ${question.explanation}</p>
+            </div>
+        `;
+        feedbackDiv.classList.remove('hidden');
+        
+        // Update score if correct
+        if (isCorrect) {
+            quizScore++;
+        }
+        
+        // Check if this is the last question
+        const isLastQuestion = currentQuestionIndex === currentQuiz.questions.length - 1;
+        
+        // Send result to server
         try {
             const response = await fetch('/check_answer', {
                 method: 'POST',
@@ -81,52 +131,108 @@ document.addEventListener('DOMContentLoaded', () => {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    selected_index: selectedIndex,
-                    correct_index: currentQuiz.correct_index
+                    quiz_id: currentQuiz.topic,
+                    question_index: currentQuestionIndex,
+                    selected_answer: selectedIndex,
+                    correct_answer: question.correct_index,
+                    is_last_question: isLastQuestion,
+                    current_score: quizScore,
+                    total_questions: currentQuiz.questions.length,
+                    topic: currentQuiz.topic
                 })
             });
             
-            if (!response.ok) throw new Error('Failed to check answer');
+            const result = await response.json();
             
-            const data = await response.json();
-            feedbackElement.innerHTML = `
-                <div class="quiz-feedback-content ${data.is_correct ? 'correct' : 'incorrect'}">
-                    <i class="fas ${data.is_correct ? 'fa-check-circle' : 'fa-times-circle'}"></i>
-                    <p>${data.feedback}</p>
-                </div>
-            `;
-            
-            // Highlight correct and incorrect answers
-            buttons.forEach((button, index) => {
-                if (index === currentQuiz.correct_index) {
-                    button.classList.add('correct');
-                } else if (index === selectedIndex && !data.is_correct) {
-                    button.classList.add('incorrect');
-                }
-            });
+            // If it's the last question, show completion message
+            if (isLastQuestion) {
+                setTimeout(() => {
+                    quizContainer.innerHTML = `
+                        <div class="quiz-header">
+                            <h3>🎮 Quiz Complete!</h3>
+                            <button id="close-quiz" class="close-button">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="quiz-content">
+                            <div class="quiz-completion">
+                                <h3>Great job! 🎉</h3>
+                                <p>You scored ${quizScore} out of ${currentQuiz.questions.length}</p>
+                                <p class="xp-earned">+${result.xp_earned || quizScore * 2} XP earned!</p>
+                                <button class="quiz-done-button">Done</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add event listeners
+                    const closeButton = document.getElementById('close-quiz');
+                    closeButton.addEventListener('click', closeQuiz);
+                    
+                    const doneButton = quizContainer.querySelector('.quiz-done-button');
+                    doneButton.addEventListener('click', closeQuiz);
+                    
+                }, 2000);
+            } else {
+                // Move to next question after 2 seconds
+                setTimeout(() => {
+                    currentQuestionIndex++;
+                    const nextQuestion = currentQuiz.questions[currentQuestionIndex];
+                    
+                    quizContainer.innerHTML = `
+                        <div class="quiz-header">
+                            <h3>🎮 Quiz: ${currentQuiz.topic}</h3>
+                            <button id="close-quiz" class="close-button">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="quiz-content">
+                            <div class="quiz-question">${nextQuestion.question}</div>
+                            <div class="quiz-options">
+                                ${nextQuestion.options.map((option, index) => 
+                                    `<button class="quiz-option" data-index="${index}">${option}</button>`
+                                ).join('')}
+                            </div>
+                            <div class="quiz-feedback hidden"></div>
+                        </div>
+                    `;
+                    
+                    // Add event listeners
+                    const optionButtons = quizContainer.querySelectorAll('.quiz-option');
+                    optionButtons.forEach(button => {
+                        button.addEventListener('click', () => {
+                            const selectedIndex = parseInt(button.getAttribute('data-index'));
+                            checkAnswer(selectedIndex);
+                        });
+                    });
+                    
+                    const closeButton = document.getElementById('close-quiz');
+                    closeButton.addEventListener('click', closeQuiz);
+                    
+                }, 2000);
+            }
             
         } catch (error) {
             console.error('Error checking answer:', error);
-            feedbackElement.textContent = 'Error checking answer. Please try again.';
         }
     }
 
     function closeQuiz() {
         quizContainer.classList.add('hidden');
-        const feedbackElement = quizContainer.querySelector('.quiz-feedback');
-        feedbackElement.innerHTML = '';
         currentQuiz = null;
+        quizContainer.innerHTML = '';
     }
 
     async function sendMessage() {
-        if (isProcessing || !userInput.value.trim()) return;
-        
         const message = userInput.value.trim();
+        if (!message || isProcessing) return;
+        
+        // Clear input and add user message
         userInput.value = '';
         addMessage(message, true);
         
-        showLoading();
+        // Show loading animation
         isProcessing = true;
+        showLoading();
         
         try {
             const response = await fetch('/send_message', {
@@ -137,152 +243,78 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ message })
             });
             
-            if (!response.ok) throw new Error('Failed to send message');
-            
             const data = await response.json();
             
-            hideLoading();
-            addMessage(data.response);
+            if (data.error) {
+                addMessage('Sorry, there was an error processing your message. Please try again.', false);
+                return;
+            }
             
+            // Add bot message
+            addMessage(data.response, false);
+            
+            // Check if we have a tip
+            if (data.tip) {
+                displayTip(data.tip);
+            }
+            
+            // Check if we have a quiz
             if (data.quiz) {
                 displayQuiz(data.quiz);
             }
             
-            if (data.learning_tip) {
-                displayTip(data.learning_tip);
-            }
-            
         } catch (error) {
             console.error('Error sending message:', error);
+            addMessage('Sorry, there was an error connecting to the server. Please try again later.', false);
+        } finally {
+            isProcessing = false;
             hideLoading();
-            addMessage('Sorry, I encountered an error. Please try again.');
         }
-        
-        isProcessing = false;
     }
-
-    // Activity Chart initialization
-    function initializeActivityChart(labels, data) {
-        const ctx = document.getElementById('activityChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'XP Earned',
-                    data: data,
-                    borderColor: '#4CAF50',
-                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                    tension: 0.4,
-                    fill: true,
-                    borderWidth: 3,
-                    pointBackgroundColor: '#4CAF50',
-                    pointRadius: 6,
-                    pointHoverRadius: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(44, 62, 80, 0.9)',
-                        titleFont: {
-                            family: 'Comic Neue',
-                            size: 14
-                        },
-                        bodyFont: {
-                            family: 'Comic Neue',
-                            size: 14
-                        },
-                        padding: 12,
-                        cornerRadius: 8
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            font: {
-                                family: 'Comic Neue',
-                                size: 12
-                            }
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            font: {
-                                family: 'Comic Neue',
-                                size: 12
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    // Voice input handling
-    if ('webkitSpeechRecognition' in window) {
-        const recognition = new webkitSpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
+    
+    // Add this new function to handle quiz button click
+    async function generateQuiz() {
+        if (isProcessing) return;
         
-        recognition.onstart = () => {
-            voiceButton.classList.add('listening');
-        };
-        
-        recognition.onend = () => {
-            voiceButton.classList.remove('listening');
-        };
-        
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            userInput.value = transcript;
-            sendMessage();
-        };
-        
-        voiceButton.addEventListener('click', () => {
-            recognition.start();
-        });
-    } else {
-        voiceButton.style.display = 'none';
-    }
-
-    // Event listeners
-    userInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
-
-    sendButton.addEventListener('click', sendMessage);
-    closeQuizButton.addEventListener('click', closeQuiz);
-
-    // Generate quiz button
-    document.getElementById('generate-quiz').addEventListener('click', async () => {
+        isProcessing = true;
         showLoading();
+        
         try {
-            const response = await fetch('/generate_quiz');
-            if (!response.ok) throw new Error('Failed to generate quiz');
+            // Add a message from the user indicating they want a quiz
+            addMessage("Can I have a quiz about what we're talking about?", true);
             
-            const quiz = await response.json();
-            hideLoading();
-            displayQuiz(quiz);
+            const response = await fetch('/generate_quiz');
+            const data = await response.json();
+            
+            if (data.error) {
+                addMessage('Sorry, I could not generate a quiz right now. Please try again later.', false);
+                return;
+            }
+            
+            // Add a message from the bot
+            addMessage(`Sure! I've created a quiz about ${data.topic}. Let's see what you know! 🎮`, false);
+            
+            // Display the quiz
+            displayQuiz(data);
+            
         } catch (error) {
             console.error('Error generating quiz:', error);
+            addMessage('Sorry, there was an error generating the quiz. Please try again later.', false);
+        } finally {
+            isProcessing = false;
             hideLoading();
-            addMessage('Sorry, I encountered an error generating the quiz. Please try again.');
         }
+    }
+    
+    // Event listeners
+    sendButton.addEventListener('click', sendMessage);
+    userInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
     });
+    
+    // Add this event listener for the quiz button
+    quizButton.addEventListener('click', generateQuiz);
+
+    // Initial welcome message
+    addMessage('Hi there! 👋 I\'m Buddy, your learning friend! What would you like to learn about today? You can ask me a question, or click the "Quiz Me!" button to get a fun learning quiz!', false);
 });

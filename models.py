@@ -27,34 +27,30 @@ class User(UserMixin, db.Model):
     last_streak_update = db.Column(db.Date)
 
     def __init__(self, **kwargs):
+        self.password_hash = kwargs.pop('password', None)
         super(User, self).__init__(**kwargs)
-        if 'total_xp' not in kwargs:
-            self.total_xp = 0
-        if 'level' not in kwargs:
-            self.level = 1
-        if 'login_streak' not in kwargs:
-            self.login_streak = 0
-    
+
     @property
     def password(self):
-        raise AttributeError('password is not a readable attribute')
-    
+        raise AttributeError('Password is not a readable attribute')
+
     @password.setter
     def password(self, password):
         self.password_hash = generate_password_hash(password)
-    
+
     def verify_password(self, password):
         return check_password_hash(self.password_hash, password)
-    
+
     def add_xp(self, points):
         self.total_xp += points
-        # Level up every 1000 XP
-        new_level = (self.total_xp // 1000) + 1
+        
+        # Update level based on XP (simple formula: 100 XP per level)
+        new_level = 1 + self.total_xp // 100
         if new_level > self.level:
             self.level = new_level
-            return True  # Indicates level up
-        return False
-    
+        
+        db.session.commit()
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -114,12 +110,20 @@ class UserAchievement(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     achievement_id = db.Column(db.Integer, db.ForeignKey('achievements.id'), nullable=False)
     earned_at = db.Column(db.DateTime, default=datetime.utcnow)
-    achievement = db.relationship('Achievement', lazy=True)
+    
+    # Relationships
+    user = db.relationship('User', backref='achievements')
+    achievement = db.relationship('Achievement')
+    
+    # Ensure a user can't earn the same achievement twice
+    __table_args__ = (db.UniqueConstraint('user_id', 'achievement_id'),)
     
     def to_dict(self):
         return {
             'id': self.id,
-            'achievement': self.achievement.to_dict(),
+            'user_id': self.user_id,
+            'achievement_id': self.achievement_id,
+            'achievement_name': self.achievement.name if self.achievement else None,
             'earned_at': self.earned_at.isoformat()
         }
 
@@ -129,15 +133,16 @@ class LearningSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     topic = db.Column(db.String(100), nullable=False)
-    duration = db.Column(db.Integer)  # Duration in seconds
-    started_at = db.Column(db.DateTime, default=datetime.utcnow)
-    ended_at = db.Column(db.DateTime)
+    duration_minutes = db.Column(db.Integer, nullable=False)
+    xp_earned = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def to_dict(self):
         return {
             'id': self.id,
+            'user_id': self.user_id,
             'topic': self.topic,
-            'duration': self.duration,
-            'started_at': self.started_at.isoformat(),
-            'ended_at': self.ended_at.isoformat() if self.ended_at else None
+            'duration_minutes': self.duration_minutes,
+            'xp_earned': self.xp_earned,
+            'created_at': self.created_at.isoformat()
         }

@@ -19,21 +19,24 @@ class InteractiveFeatures:
         """Update the conversation context with new topics"""
         try:
             # Use Groq to extract topics from the conversation
-            topic_prompt = PromptTemplate(
-                template="""Extract 1-3 specific educational topics from this message. 
-                Response must be EXACTLY in this format: ["topic1", "topic2"]
-                
-                Message: {message}
-                """,
-                input_variables=["message"]
-            )
+            prompt = f"""
+            Extract the main educational topics from this message:
+            "{message}"
             
-            response = self.llm.invoke(topic_prompt.format(message=message))
-            topics = ast.literal_eval(response.content)
+            Return only the topics as a comma-separated list. If no educational topics are found, return "general conversation".
+            """
             
-            # Update conversation topics
-            self.conversation_topics.extend(topics)
-            # Keep only the last 5 topics
+            response = self.llm.invoke(prompt)
+            topics = response.content.strip().split(',')
+            
+            # Add topics to conversation context (max 5 recent topics)
+            for topic in topics:
+                topic = topic.strip()
+                if topic and topic != "general conversation":
+                    if topic not in self.conversation_topics:
+                        self.conversation_topics.append(topic)
+            
+            # Keep only the 5 most recent topics
             self.conversation_topics = self.conversation_topics[-5:]
             
         except Exception as e:
@@ -41,31 +44,82 @@ class InteractiveFeatures:
 
     def should_generate_quiz(self, message):
         """Determine if we should generate a quiz based on the message"""
-        quiz_keywords = ['quiz', 'test', 'question', 'practice', 'exercise']
-        return any(keyword in message.lower() for keyword in quiz_keywords)
+        # Convert message to lowercase for case-insensitive matching
+        message_lower = message.lower()
+        
+        # Check for direct quiz requests
+        quiz_keywords = ['quiz', 'test', 'question', 'questions', 'practice', 'exercise', 'test me']
+        direct_requests = any(keyword in message_lower for keyword in quiz_keywords)
+        
+        # Check for phrases like "Can I have a quiz" or "I want a quiz"
+        quiz_phrases = [
+            'can i have a quiz', 
+            'give me a quiz', 
+            'i want a quiz',
+            'create a quiz',
+            'make a quiz',
+            'test my knowledge'
+        ]
+        phrase_requests = any(phrase in message_lower for phrase in quiz_phrases)
+        
+        return direct_requests or phrase_requests
 
     def generate_quiz(self):
         """Generate a quiz based on conversation context or a random educational topic"""
         try:
-            topics = self.conversation_topics if self.conversation_topics else ["general knowledge"]
-            topic = random.choice(topics)
+            # Determine quiz topic
+            if self.conversation_topics:
+                topic = random.choice(self.conversation_topics)
+            else:
+                # Default topics if no conversation context
+                default_topics = [
+                    "Animals", "Space", "Math", "Science", "Geography", 
+                    "History", "Technology", "Nature", "Art", "Music"
+                ]
+                topic = random.choice(default_topics)
             
-            quiz_prompt = PromptTemplate(
-                template="""Create a multiple-choice quiz question about {topic}.
-                Response must be EXACTLY in this format:
-                {{
-                    "question": "What is...",
-                    "options": ["option1", "option2", "option3", "option4"],
-                    "correct_index": 0
-                }}
-                Make sure the correct_index matches the index of the correct answer in the options list.
-                """,
-                input_variables=["topic"]
-            )
+            # Prompt for quiz generation
+            prompt = f"""
+            Create a kid-friendly quiz about {topic}. 
+            Format:
+            {{
+                "topic": "{topic}",
+                "questions": [
+                    {{
+                        "question": "Question text here?",
+                        "options": ["Option A", "Option B", "Option C", "Option D"],
+                        "correct_index": 0,
+                        "explanation": "Brief explanation why this is correct"
+                    }},
+                    ... (2 more questions)
+                ]
+            }}
             
-            response = self.llm.invoke(quiz_prompt.format(topic=topic))
-            quiz_data = json.loads(response.content)
-            return quiz_data
+            Make sure:
+            1. Questions are simple and age-appropriate for 6-14 year olds
+            2. Use clear, straightforward language
+            3. Provide exactly 3 questions
+            4. Each question has 4 options
+            5. correct_index is the 0-based index of the correct answer
+            6. Include a short explanation for the correct answer
+            7. Make it fun and engaging
+            8. Return only valid JSON
+            """
+            
+            response = self.llm.invoke(prompt)
+            
+            # Extract JSON from response
+            import json
+            import re
+            
+            # Look for JSON pattern
+            json_match = re.search(r'({.*})', response.content, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(1)
+                quiz_data = json.loads(json_str)
+                return quiz_data
+            else:
+                raise ValueError("Could not extract valid JSON from the quiz response")
             
         except Exception as e:
             print(f"Error generating quiz: {str(e)}")

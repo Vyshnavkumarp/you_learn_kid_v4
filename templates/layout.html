@@ -16,11 +16,11 @@
                 {% if request.endpoint != 'chat' %}
                     <a href="{{ url_for('chat') }}" class="nav-button">
                         <i class="fas fa-comments"></i>
-                        Back to Chat
+                        Chat with Buddy
                     </a>
                 {% endif %}
-                {% if request.endpoint != 'dashboard' %}
-                    <a href="{{ url_for('dashboard') }}" class="nav-button">
+                {% if request.endpoint != 'progress.dashboard' %}
+                    <a href="{{ url_for('progress.dashboard') }}" class="nav-button">
                         <i class="fas fa-chart-bar"></i>
                         Dashboard
                     </a>
@@ -37,7 +37,7 @@
         {% block content %}{% endblock %}
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     {% block extra_js %}{% endblock %}
 </body>
