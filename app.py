@@ -46,7 +46,7 @@ interactive = InteractiveFeatures()
 @app.route('/')
 def index():
     if current_user.is_authenticated:
-        return redirect(url_for('chat'))
+        return redirect(url_for('progress.dashboard'))
     return redirect(url_for('auth.login'))
 
 @app.route('/chat')

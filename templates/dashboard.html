@@ -1,0 +1,160 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard - Buddy{% endblock %}
+
+{% block content %}
+<div class="nav-buttons">
+    <a href="{{ url_for('chat') }}" class="nav-button">
+        <i class="fas fa-comments"></i>
+        Back to Chat
+    </a>
+    <a href="{{ url_for('auth.logout') }}" class="nav-button">
+        <i class="fas fa-sign-out-alt"></i>
+        Logout
+    </a>
+</div>
+
+<div class="dashboard-container">
+    <!-- User Stats Card -->
+    <div class="dashboard-card">
+        <h2><i class="fas fa-user-graduate"></i> {{ current_user.first_name }}'s Progress</h2>
+        <div class="stats-container">
+            <div class="stat-card">
+                <i class="fas fa-star"></i>
+                <div class="stat-value">{{ current_user.total_xp }}</div>
+                <div class="stat-label">Total XP</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-layer-group"></i>
+                <div class="stat-value">{{ current_user.level }}</div>
+                <div class="stat-label">Level</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-fire"></i>
+                <div class="stat-value">{{ current_user.login_streak }}</div>
+                <div class="stat-label">Day Streak</div>
+            </div>
+        </div>
+        
+        <!-- Level Progress -->
+        <h3>🎮 Level Progress</h3>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ level_progress }}%"></div>
+        </div>
+        <p>{{ xp_needed }} XP needed for next level! Keep going! 🚀</p>
+    </div>
+
+    <!-- Achievements Card -->
+    <div class="dashboard-card">
+        <h2><i class="fas fa-trophy"></i> Achievements</h2>
+        <div class="achievements-grid">
+            {% for achievement in achievements %}
+            <div class="achievement-card {% if not achievement.earned %}locked{% endif %}" 
+                 title="{{ achievement.description }}">
+                <div class="achievement-icon">
+                    <i class="fas {{ achievement.icon }}"></i>
+                </div>
+                <div class="achievement-name">{{ achievement.name }}</div>
+                <div class="achievement-points">
+                    <i class="fas fa-star" style="font-size: 12px; color: #ffc107;"></i>
+                    {{ achievement.points }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Learning Activity Card -->
+    <div class="dashboard-card">
+        <h2><i class="fas fa-chart-line"></i> Learning Activity</h2>
+        <div class="chart-container">
+            <canvas id="activityChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Streak Calendar Card -->
+    <div class="dashboard-card">
+        <h2><i class="fas fa-calendar-alt"></i> Activity Calendar</h2>
+        <div class="streak-calendar">
+            {% for day in calendar_days %}
+            <div class="calendar-day {% if day.active %}active{% endif %}"
+                 title="{{ day.date }}">
+                {{ day.day }}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Activity Chart
+    const ctx = document.getElementById('activityChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ activity_labels | tojson }},
+            datasets: [{
+                label: 'XP Earned',
+                data: {{ activity_data | tojson }},
+                borderColor: '#4CAF50',
+                backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                tension: 0.4,
+                fill: true,
+                borderWidth: 3,
+                pointBackgroundColor: '#4CAF50',
+                pointRadius: 6,
+                pointHoverRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(44, 62, 80, 0.9)',
+                    titleFont: {
+                        family: 'Comic Neue',
+                        size: 14
+                    },
+                    bodyFont: {
+                        family: 'Comic Neue',
+                        size: 14
+                    },
+                    padding: 12,
+                    cornerRadius: 8
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            family: 'Comic Neue',
+                            size: 12
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            family: 'Comic Neue',
+                            size: 12
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

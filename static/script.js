@@ -161,6 +161,76 @@ document.addEventListener('DOMContentLoaded', () => {
         isProcessing = false;
     }
 
+    // Activity Chart initialization
+    function initializeActivityChart(labels, data) {
+        const ctx = document.getElementById('activityChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'XP Earned',
+                    data: data,
+                    borderColor: '#4CAF50',
+                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#4CAF50',
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(44, 62, 80, 0.9)',
+                        titleFont: {
+                            family: 'Comic Neue',
+                            size: 14
+                        },
+                        bodyFont: {
+                            family: 'Comic Neue',
+                            size: 14
+                        },
+                        padding: 12,
+                        cornerRadius: 8
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                family: 'Comic Neue',
+                                size: 12
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                family: 'Comic Neue',
+                                size: 12
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     // Voice input handling
     if ('webkitSpeechRecognition' in window) {
         const recognition = new webkitSpeechRecognition();
