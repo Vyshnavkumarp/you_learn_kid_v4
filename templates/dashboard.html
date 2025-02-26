@@ -14,20 +14,24 @@
     </a>
 </div>
 
+<div class="dashboard-header">
+    <h1>🚀 {{ current_user.first_name }}'s Learning Adventure!</h1>
+</div>
+
 <div class="dashboard-container">
     <!-- User Stats Card -->
-    <div class="dashboard-card">
-        <h2><i class="fas fa-user-graduate"></i> {{ current_user.first_name }}'s Progress</h2>
+    <div class="dashboard-card stats-card">
+        <h2><i class="fas fa-user-astronaut"></i> Your Learning Powers</h2>
         <div class="stats-container">
             <div class="stat-card">
                 <i class="fas fa-star"></i>
                 <div class="stat-value">{{ current_user.total_xp }}</div>
-                <div class="stat-label">Total XP</div>
+                <div class="stat-label">Magic Points</div>
             </div>
             <div class="stat-card">
-                <i class="fas fa-layer-group"></i>
+                <i class="fas fa-crown"></i>
                 <div class="stat-value">{{ current_user.level }}</div>
-                <div class="stat-label">Level</div>
+                <div class="stat-label">Wizard Level</div>
             </div>
             <div class="stat-card">
                 <i class="fas fa-fire"></i>
@@ -38,72 +42,99 @@
         
         <!-- Level Progress -->
         <h3>🎮 Level Progress</h3>
-        <div class="progress-bar">
-            <div class="progress-fill" style="width: {{ level_progress }}%"></div>
+        <div class="progress-container">
+            <div class="progress-character"></div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {{ level_progress }}%"></div>
+            </div>
+            <div class="progress-end"></div>
         </div>
-        <p>{{ xp_needed }} XP needed for next level! Keep going! 🚀</p>
+        <p class="xp-needed">{{ xp_needed }} XP needed for next level! Keep going! 🚀</p>
     </div>
 
     <!-- Achievements Card -->
-    <div class="dashboard-card">
-        <h2><i class="fas fa-trophy"></i> Achievements</h2>
+    <div class="dashboard-card achievements-card">
+        <h2><i class="fas fa-trophy"></i> Your Treasure Chest</h2>
         <div class="achievements-grid">
             {% for achievement in achievements %}
             <div class="achievement-card {% if not achievement.earned %}locked{% endif %}" 
-                 title="{{ achievement.description }}">
+                 data-description="{{ achievement.description }}">
                 <div class="achievement-icon">
                     <i class="fas {{ achievement.icon }}"></i>
+                    {% if not achievement.earned %}
+                        <div class="achievement-lock">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                    {% endif %}
                 </div>
                 <div class="achievement-name">{{ achievement.name }}</div>
-                <div class="achievement-points">
-                    <i class="fas fa-star" style="font-size: 12px; color: #ffc107;"></i>
-                    {{ achievement.points }}
-                </div>
+                <div class="achievement-badge">+{{ achievement.points }} XP</div>
+                {% if achievement.earned %}
+                    <div class="achievement-shine"></div>
+                {% endif %}
             </div>
             {% endfor %}
         </div>
     </div>
 
     <!-- Learning Activity Card -->
-    <div class="dashboard-card">
-        <h2><i class="fas fa-chart-line"></i> Learning Activity</h2>
+    <div class="dashboard-card activity-card">
+        <h2><i class="fas fa-brain"></i> Your Learning Journey</h2>
         <div class="chart-container">
             <canvas id="activityChart"></canvas>
+        </div>
+        <div class="activity-legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: rgba(76, 175, 80, 0.7)"></div>
+                <div>Learning Points Earned</div>
+            </div>
         </div>
     </div>
 
     <!-- Streak Calendar Card -->
-    <div class="dashboard-card">
-        <h2><i class="fas fa-calendar-alt"></i> Activity Calendar</h2>
+    <div class="dashboard-card calendar-card">
+        <h2><i class="fas fa-calendar-check"></i> Your Learning Calendar</h2>
         <div class="streak-calendar">
             {% for day in calendar_days %}
-            <div class="calendar-day {% if day.active %}active{% endif %}"
-                 title="{{ day.date }}">
+            <div class="calendar-day {% if day.active %}active{% endif %}" title="{{ day.date }}">
                 {{ day.day }}
+                {% if day.active %}<i class="fas fa-check"></i>{% endif %}
             </div>
             {% endfor %}
         </div>
     </div>
 </div>
+
+<div class="animated-elements">
+    <div class="rocket"></div>
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+    <div class="cloud cloud-3"></div>
+    <div class="star star-1"></div>
+    <div class="star star-2"></div>
+    <div class="star star-3"></div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // Activity Chart
+    // Activity Chart with kid-friendly styling
     const ctx = document.getElementById('activityChart').getContext('2d');
     new Chart(ctx, {
         type: 'line',
         data: {
-            labels: {{ activity_labels | tojson }},
+            labels: {{ activity_labels|tojson }},
             datasets: [{
                 label: 'XP Earned',
-                data: {{ activity_data | tojson }},
-                borderColor: '#4CAF50',
-                backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                data: {{ activity_data|tojson }},
+                backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                borderColor: 'rgba(76, 175, 80, 1)',
+                borderWidth: 3,
                 tension: 0.4,
                 fill: true,
-                borderWidth: 3,
-                pointBackgroundColor: '#4CAF50',
+                pointBackgroundColor: '#FFFFFF',
+                pointBorderColor: '#4CAF50',
+                pointBorderWidth: 2,
                 pointRadius: 6,
                 pointHoverRadius: 8
             }]
@@ -119,21 +150,32 @@
                     backgroundColor: 'rgba(44, 62, 80, 0.9)',
                     titleFont: {
                         family: 'Comic Neue',
-                        size: 14
+                        size: 14,
+                        weight: 'bold'
                     },
                     bodyFont: {
                         family: 'Comic Neue',
                         size: 14
                     },
                     padding: 12,
-                    cornerRadius: 8
+                    cornerRadius: 8,
+                    displayColors: false,
+                    callbacks: {
+                        title: function(tooltipItems) {
+                            return 'Learning Day: ' + tooltipItems[0].label;
+                        },
+                        label: function(context) {
+                            return context.raw + ' XP earned! Awesome!';
+                        }
+                    }
                 }
             },
             scales: {
                 y: {
                     beginAtZero: true,
                     grid: {
-                        display: false
+                        display: true,
+                        color: 'rgba(0, 0, 0, 0.05)'
                     },
                     ticks: {
                         font: {
@@ -150,11 +192,40 @@
                         font: {
                             family: 'Comic Neue',
                             size: 12
-                        }
+                        },
+                        maxRotation: 45,
+                        minRotation: 45
                     }
                 }
+            },
+            animation: {
+                duration: 2000,
+                easing: 'easeOutBounce'
             }
         }
     });
+    
+    // Add confetti effect when page loads
+    function createConfetti() {
+        const confettiCount = 100;
+        const confettiContainer = document.createElement('div');
+        confettiContainer.className = 'confetti-container';
+        document.body.appendChild(confettiContainer);
+        
+        for (let i = 0; i < confettiCount; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.left = Math.random() * 100 + 'vw';
+            confetti.style.animationDelay = Math.random() * 5 + 's';
+            confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+            confettiContainer.appendChild(confetti);
+        }
+        
+        setTimeout(() => {
+            confettiContainer.remove();
+        }, 5000);
+    }
+    
+    createConfetti();
 </script>
 {% endblock %}

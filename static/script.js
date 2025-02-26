@@ -211,13 +211,81 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 2000);
             }
             
+            // If implemented in the check_answer function when a user gets a new achievement:
+            if (result.new_achievement) {
+                playAchievementSound();
+                showAchievementNotification(result.new_achievement);
+            }
+            
         } catch (error) {
             console.error('Error checking answer:', error);
         }
     }
 
+    // Add this function for celebrating quiz completion
+    function celebrateQuizCompletion(score, total) {
+        // Create confetti container
+        const confettiContainer = document.createElement('div');
+        confettiContainer.classList.add('confetti-container');
+        document.body.appendChild(confettiContainer);
+        
+        // Add confetti pieces
+        for (let i = 0; i < 50; i++) {
+            const confetti = document.createElement('div');
+            confetti.classList.add('confetti');
+            confetti.style.left = `${Math.random() * 100}%`;
+            confetti.style.animationDelay = `${Math.random() * 3}s`;
+            confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 80%, 60%)`;
+            confettiContainer.appendChild(confetti);
+        }
+        
+        // Show celebration message
+        const celebrationMsg = document.createElement('div');
+        celebrationMsg.classList.add('celebration-message');
+        
+        // Determine message based on score
+        let message = '';
+        let emoji = '';
+        
+        const percentage = (score / total) * 100;
+        
+        if (percentage === 100) {
+            message = "Perfect Score! You're Amazing!";
+            emoji = "🏆";
+        } else if (percentage >= 80) {
+            message = "Great Job! Super Smart!";
+            emoji = "🌟";
+        } else if (percentage >= 60) {
+            message = "Well Done! Keep Learning!";
+            emoji = "👍";
+        } else {
+            message = "Good Try! Let's Learn More!";
+            emoji = "💪";
+        }
+        
+        celebrationMsg.innerHTML = `
+            <div class="celebration-emoji">${emoji}</div>
+            <h2>${message}</h2>
+            <p>You got ${score} out of ${total} questions right!</p>
+        `;
+        
+        document.body.appendChild(celebrationMsg);
+        
+        // Remove celebration after 5 seconds
+        setTimeout(() => {
+            confettiContainer.remove();
+            celebrationMsg.remove();
+        }, 5000);
+    }
+
     function closeQuiz() {
         quizContainer.classList.add('hidden');
+        if (currentQuiz) {
+            // Celebrate if it was a completed quiz
+            if (quizScore > 0) {
+                celebrateQuizCompletion(quizScore, currentQuiz.questions.length);
+            }
+        }
         currentQuiz = null;
         quizContainer.innerHTML = '';
     }
@@ -306,6 +374,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // Achievement unlock sound
+    function playAchievementSound() {
+        const sound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3');
+        sound.volume = 0.5;
+        sound.play().catch(e => console.log('Audio playback error:', e));
+    }
+
+    function showAchievementNotification(achievement) {
+        const notification = document.createElement('div');
+        notification.classList.add('achievement-notification');
+        
+        notification.innerHTML = `
+            <div class="achievement-notification-icon">
+                <i class="fas ${achievement.icon}"></i>
+            </div>
+            <div class="achievement-notification-content">
+                <h3>Achievement Unlocked!</h3>
+                <p>${achievement.name}</p>
+                <p class="achievement-notification-points">+${achievement.points} XP</p>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 100);
+        
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 500);
+        }, 5000);
+    }
+
     // Event listeners
     sendButton.addEventListener('click', sendMessage);
     userInput.addEventListener('keypress', (e) => {
