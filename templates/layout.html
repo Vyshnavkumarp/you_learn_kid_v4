@@ -9,39 +9,38 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='variables.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='utilities.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='components/chat.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='components/quiz.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     <nav class="main-nav">
         <div class="nav-buttons">
+            {% if request.path != url_for('chat') %}
+            <a href="{{ url_for('chat') }}" class="nav-button">
+                <i class="fas fa-comments"></i>
+                Back to Chat
+            </a>
+            {% endif %}
+            {% if current_user.is_authenticated and request.path != url_for('progress.dashboard') %}
+            <a href="{{ url_for('progress.dashboard') }}" class="nav-button">
+                <i class="fas fa-chart-bar"></i>
+                Dashboard
+            </a>
+            {% endif %}
             {% if current_user.is_authenticated %}
-                {% if request.endpoint != 'chat' %}
-                    <a href="{{ url_for('chat') }}" class="nav-button">
-                        <i class="fas fa-comments"></i>
-                        Chat with Buddy
-                    </a>
-                {% endif %}
-                {% if request.endpoint != 'progress.dashboard' %}
-                    <a href="{{ url_for('progress.dashboard') }}" class="nav-button">
-                        <i class="fas fa-chart-bar"></i>
-                        Dashboard
-                    </a>
-                {% endif %}
-                <a href="{{ url_for('auth.logout') }}" class="nav-button">
-                    <i class="fas fa-sign-out-alt"></i>
-                    Logout
-                </a>
+            <a href="{{ url_for('auth.logout') }}" class="nav-button">
+                <i class="fas fa-sign-out-alt"></i>
+                Logout
+            </a>
             {% endif %}
         </div>
     </nav>
-
-    <main class="content">
+    
+    <div class="content">
         {% block content %}{% endblock %}
-    </main>
+    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     {% block extra_js %}{% endblock %}
 </body>

@@ -3,17 +3,6 @@
 {% block title %}Dashboard - Buddy{% endblock %}
 
 {% block content %}
-<div class="nav-buttons">
-    <a href="{{ url_for('chat') }}" class="nav-button">
-        <i class="fas fa-comments"></i>
-        Back to Chat
-    </a>
-    <a href="{{ url_for('auth.logout') }}" class="nav-button">
-        <i class="fas fa-sign-out-alt"></i>
-        Logout
-    </a>
-</div>
-
 <div class="dashboard-header">
     <h1>🚀 {{ current_user.first_name }}'s Learning Adventure!</h1>
 </div>
