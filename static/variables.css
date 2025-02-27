@@ -1,0 +1,37 @@
+:root {
+    /* Colors */
+    --primary-color: #4CAF50;
+    --primary-light: #8BC34A;
+    --primary-dark: #388E3C;
+    --secondary-color: #2196F3;
+    --accent-color: #FF9800;
+    --danger-color: #f44336;
+    --success-bg: #e8f5e9;
+    --error-bg: #ffebee;
+    --text-primary: #333;
+    --text-secondary: #666;
+    
+    /* Gradients */
+    --primary-gradient: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+    --header-gradient: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    
+    /* Shadows */
+    --card-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    --button-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+    
+    /* Transitions */
+    --transition-fast: 0.3s ease;
+    --transition-medium: 0.5s ease;
+    
+    /* Border Radius */
+    --radius-small: 8px;
+    --radius-medium: 15px;
+    --radius-large: 25px;
+    
+    /* Spacing */
+    --spacing-xs: 5px;
+    --spacing-sm: 10px;
+    --spacing-md: 15px;
+    --spacing-lg: 20px;
+    --spacing-xl: 30px;
+}
