@@ -9,212 +9,161 @@
 
 <div class="dashboard-container">
     <!-- User Stats Card -->
-    <div class="dashboard-card stats-card">
-        <h2><i class="fas fa-user-astronaut"></i> Your Learning Powers</h2>
-        <div class="stats-container">
-            <div class="stat-card">
-                <i class="fas fa-star"></i>
+    <div class="card">
+        <h2 class="card-title"><i class="fas fa-user-astronaut"></i> Your Learning Powers</h2>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <i class="fas fa-star stat-icon"></i>
                 <div class="stat-value">{{ current_user.total_xp }}</div>
                 <div class="stat-label">Magic Points</div>
             </div>
-            <div class="stat-card">
-                <i class="fas fa-crown"></i>
+            <div class="stat-item">
+                <i class="fas fa-crown stat-icon"></i>
                 <div class="stat-value">{{ current_user.level }}</div>
                 <div class="stat-label">Wizard Level</div>
             </div>
-            <div class="stat-card">
-                <i class="fas fa-fire"></i>
+            <div class="stat-item">
+                <i class="fas fa-fire stat-icon"></i>
                 <div class="stat-value">{{ current_user.login_streak }}</div>
                 <div class="stat-label">Day Streak</div>
             </div>
         </div>
         
-        <!-- Level Progress -->
         <h3>🎮 Level Progress</h3>
-        <div class="progress-container">
-            <div class="progress-character"></div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: {{ level_progress }}%"></div>
-            </div>
-            <div class="progress-end"></div>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ level_progress }}%"></div>
         </div>
-        <p class="xp-needed">{{ xp_needed }} XP needed for next level! Keep going! 🚀</p>
+        <p class="text-center mt-md">{{ xp_needed }} XP needed for next level! Keep going! 🚀</p>
     </div>
 
     <!-- Achievements Card -->
-    <div class="dashboard-card achievements-card">
-        <h2><i class="fas fa-trophy"></i> Your Treasure Chest</h2>
+    <div class="card">
+        <h2 class="card-title"><i class="fas fa-trophy"></i> Your Treasure Chest</h2>
         <div class="achievements-grid">
             {% for achievement in achievements %}
-            <div class="achievement-card {% if not achievement.earned %}locked{% endif %}" 
+            <div class="achievement-item {% if not achievement.earned %}locked{% endif %}" 
                  data-description="{{ achievement.description }}">
                 <div class="achievement-icon">
                     <i class="fas {{ achievement.icon }}"></i>
-                    {% if not achievement.earned %}
-                        <div class="achievement-lock">
-                            <i class="fas fa-lock"></i>
-                        </div>
-                    {% endif %}
                 </div>
                 <div class="achievement-name">{{ achievement.name }}</div>
                 <div class="achievement-badge">+{{ achievement.points }} XP</div>
-                {% if achievement.earned %}
-                    <div class="achievement-shine"></div>
-                {% endif %}
             </div>
             {% endfor %}
         </div>
     </div>
 
     <!-- Learning Activity Card -->
-    <div class="dashboard-card activity-card">
-        <h2><i class="fas fa-brain"></i> Your Learning Journey</h2>
+    <div class="card">
+        <h2 class="card-title"><i class="fas fa-brain"></i> Your Learning Journey</h2>
         <div class="chart-container">
             <canvas id="activityChart"></canvas>
-        </div>
-        <div class="activity-legend">
-            <div class="legend-item">
-                <div class="legend-color" style="background-color: rgba(76, 175, 80, 0.7)"></div>
-                <div>Learning Points Earned</div>
-            </div>
         </div>
     </div>
 
     <!-- Streak Calendar Card -->
-    <div class="dashboard-card calendar-card">
-        <h2><i class="fas fa-calendar-check"></i> Your Learning Calendar</h2>
+    <div class="card">
+        <h2 class="card-title"><i class="fas fa-calendar-check"></i> Your Learning Calendar</h2>
         <div class="streak-calendar">
             {% for day in calendar_days %}
             <div class="calendar-day {% if day.active %}active{% endif %}" title="{{ day.date }}">
                 {{ day.day }}
-                {% if day.active %}<i class="fas fa-check"></i>{% endif %}
             </div>
             {% endfor %}
         </div>
     </div>
-</div>
-
-<div class="animated-elements">
-    <div class="rocket"></div>
-    <div class="cloud cloud-1"></div>
-    <div class="cloud cloud-2"></div>
-    <div class="cloud cloud-3"></div>
-    <div class="star star-1"></div>
-    <div class="star star-2"></div>
-    <div class="star star-3"></div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
     // Activity Chart with kid-friendly styling
-    const ctx = document.getElementById('activityChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: {{ activity_labels|tojson }},
-            datasets: [{
-                label: 'XP Earned',
-                data: {{ activity_data|tojson }},
-                backgroundColor: 'rgba(76, 175, 80, 0.2)',
-                borderColor: 'rgba(76, 175, 80, 1)',
-                borderWidth: 3,
-                tension: 0.4,
-                fill: true,
-                pointBackgroundColor: '#FFFFFF',
-                pointBorderColor: '#4CAF50',
-                pointBorderWidth: 2,
-                pointRadius: 6,
-                pointHoverRadius: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(44, 62, 80, 0.9)',
-                    titleFont: {
-                        family: 'Comic Neue',
-                        size: 14,
-                        weight: 'bold'
-                    },
-                    bodyFont: {
-                        family: 'Comic Neue',
-                        size: 14
-                    },
-                    padding: 12,
-                    cornerRadius: 8,
-                    displayColors: false,
-                    callbacks: {
-                        title: function(tooltipItems) {
-                            return 'Learning Day: ' + tooltipItems[0].label;
-                        },
-                        label: function(context) {
-                            return context.raw + ' XP earned! Awesome!';
-                        }
-                    }
-                }
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('activityChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: {{ activity_labels|tojson }},
+                datasets: [{
+                    label: 'XP Earned',
+                    data: {{ activity_data|tojson }},
+                    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                    borderColor: 'rgba(76, 175, 80, 1)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#FFFFFF',
+                    pointBorderColor: '#4CAF50',
+                    pointBorderWidth: 2,
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                }]
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        display: true,
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    },
-                    ticks: {
-                        font: {
-                            family: 'Comic Neue',
-                            size: 12
-                        }
-                    }
-                },
-                x: {
-                    grid: {
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
                         display: false
                     },
-                    ticks: {
-                        font: {
+                    tooltip: {
+                        backgroundColor: 'rgba(44, 62, 80, 0.9)',
+                        titleFont: {
                             family: 'Comic Neue',
-                            size: 12
+                            size: 14,
+                            weight: 'bold'
                         },
-                        maxRotation: 45,
-                        minRotation: 45
+                        bodyFont: {
+                            family: 'Comic Neue',
+                            size: 14
+                        },
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: false,
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                return 'Learning Day: ' + tooltipItems[0].label;
+                            },
+                            label: function(context) {
+                                return context.raw + ' XP earned! Awesome!';
+                            }
+                        }
                     }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            font: {
+                                family: 'Comic Neue',
+                                size: 12
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                family: 'Comic Neue',
+                                size: 12
+                            },
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                },
+                animation: {
+                    duration: 2000,
+                    easing: 'easeOutBounce'
                 }
-            },
-            animation: {
-                duration: 2000,
-                easing: 'easeOutBounce'
             }
-        }
+        });
     });
-    
-    // Add confetti effect when page loads
-    function createConfetti() {
-        const confettiCount = 100;
-        const confettiContainer = document.createElement('div');
-        confettiContainer.className = 'confetti-container';
-        document.body.appendChild(confettiContainer);
-        
-        for (let i = 0; i < confettiCount; i++) {
-            const confetti = document.createElement('div');
-            confetti.className = 'confetti';
-            confetti.style.left = Math.random() * 100 + 'vw';
-            confetti.style.animationDelay = Math.random() * 5 + 's';
-            confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
-            confettiContainer.appendChild(confetti);
-        }
-        
-        setTimeout(() => {
-            confettiContainer.remove();
-        }, 5000);
-    }
-    
-    createConfetti();
 </script>
 {% endblock %}

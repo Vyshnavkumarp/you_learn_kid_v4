@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
-from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
+from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash  # Add this import
 
 db = SQLAlchemy()
 
@@ -11,20 +11,20 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)
-    first_name = db.Column(db.String(50), nullable=False)
-    last_name = db.Column(db.String(50))
-    age = db.Column(db.Integer, nullable=False)
+    _password = db.Column('password', db.String(200), nullable=False)  # Note the rename of the db column
+    first_name = db.Column(db.String(80), nullable=False)
+    last_name = db.Column(db.String(80))
+    age = db.Column(db.Integer)
+    parent_email = db.Column(db.String(120))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
-    is_active = db.Column(db.Boolean, default=True)
-    parent_email = db.Column(db.String(120))
+    login_streak = db.Column(db.Integer, default=1)
+    level = db.Column(db.Integer, default=1)
+    total_xp = db.Column(db.Integer, default=0)
     
-    # Progress tracking
-    total_xp = db.Column(db.Integer, default=0, nullable=False)
-    level = db.Column(db.Integer, default=1, nullable=False)
-    login_streak = db.Column(db.Integer, default=0, nullable=False)
-    last_streak_update = db.Column(db.Date)
+    # Add other model relationships here
+    activities = db.relationship('Activity', back_populates='user')
+    achievements = db.relationship('UserAchievement', back_populates='user')
 
     def __init__(self, **kwargs):
         self.password_hash = kwargs.pop('password', None)
@@ -32,26 +32,32 @@ class User(UserMixin, db.Model):
 
     @property
     def password(self):
+        """Prevent password from being accessed"""
         raise AttributeError('Password is not a readable attribute')
 
     @password.setter
     def password(self, password):
-        self.password_hash = generate_password_hash(password)
+        """Set password to a hashed password"""
+        self._password = generate_password_hash(password, method='pbkdf2:sha256')
 
     def verify_password(self, password):
-        return check_password_hash(self.password_hash, password)
+        """Check if the provided password matches the hash"""
+        return check_password_hash(self._password, password)
 
     def add_xp(self, points):
+        """Add XP points and handle level ups"""
         self.total_xp += points
         
-        # Update level based on XP (simple formula: 100 XP per level)
-        new_level = 1 + self.total_xp // 100
+        # Check for level up
+        new_level = 1 + (self.total_xp // 100)  # Simple formula: level = 1 + (XP / 100)
         if new_level > self.level:
             self.level = new_level
-        
+            
         db.session.commit()
+        return points
 
     def to_dict(self):
+        """Convert user object to dictionary for API responses."""
         return {
             'id': self.id,
             'username': self.username,
@@ -59,9 +65,9 @@ class User(UserMixin, db.Model):
             'first_name': self.first_name,
             'last_name': self.last_name,
             'age': self.age,
-            'total_xp': self.total_xp,
+            'login_streak': self.login_streak,
             'level': self.level,
-            'login_streak': self.login_streak
+            'total_xp': self.total_xp
         }
 
 class QuizAttempt(db.Model):
@@ -87,21 +93,15 @@ class Achievement(db.Model):
     __tablename__ = 'achievements'
     
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), unique=True, nullable=False)
-    description = db.Column(db.String(500), nullable=False)
-    category = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    icon = db.Column(db.String(50), nullable=False)
     points = db.Column(db.Integer, default=0)
-    icon = db.Column(db.String(100))
+    # Add the missing category column
+    category = db.Column(db.String(50), nullable=True)
     
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'description': self.description,
-            'category': self.category,
-            'points': self.points,
-            'icon': self.icon
-        }
+    # Many users can have many achievements
+    users = db.relationship('UserAchievement', back_populates='achievement')
 
 class UserAchievement(db.Model):
     __tablename__ = 'user_achievements'
@@ -111,9 +111,9 @@ class UserAchievement(db.Model):
     achievement_id = db.Column(db.Integer, db.ForeignKey('achievements.id'), nullable=False)
     earned_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relationships
-    user = db.relationship('User', backref='achievements')
-    achievement = db.relationship('Achievement')
+    # Define relationships
+    user = db.relationship('User', back_populates='achievements')
+    achievement = db.relationship('Achievement', back_populates='users')
     
     # Ensure a user can't earn the same achievement twice
     __table_args__ = (db.UniqueConstraint('user_id', 'achievement_id'),)
@@ -146,3 +146,19 @@ class LearningSession(db.Model):
             'xp_earned': self.xp_earned,
             'created_at': self.created_at.isoformat()
         }
+
+# Fix the Activity model by renaming the reserved 'metadata' column
+class Activity(db.Model):
+    __tablename__ = 'activities'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    activity_type = db.Column(db.String(50), nullable=False)  # e.g., 'chat', 'quiz', etc.
+    xp_earned = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Rename "metadata" to "activity_metadata" since "metadata" is reserved
+    content = db.Column(db.Text, nullable=True)  # For storing chat messages, quiz answers, etc.
+    activity_metadata = db.Column(db.JSON, nullable=True)  # For additional data
+    
+    user = db.relationship('User', back_populates='activities')

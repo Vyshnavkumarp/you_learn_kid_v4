@@ -6,28 +6,13 @@
 <div class="chat-container">
     <div class="chat-header">
         <div class="buddy-character">
-            <div class="buddy-avatar-container">
-                <div class="buddy-avatar">
-                    <img src="https://api.dicebear.com/6.x/bottts/svg?seed=buddy&backgroundColor=4CAF50" alt="Buddy">
-                </div>
-                <div class="buddy-emotions">
-                    <span>😊</span>
-                    <span>🤔</span>
-                    <span>😎</span>
-                    <span>🤩</span>
-                </div>
+            <div class="buddy-avatar">
+                <img src="https://api.dicebear.com/6.x/bottts/svg?seed=buddy&backgroundColor=4CAF50" alt="Buddy">
             </div>
             <div class="buddy-speech">
                 <h1>👋 Hi! I'm Buddy, Your Learning Friend!</h1>
                 <p>Ask me anything - I'm here to help you learn and have fun! 🌟</p>
             </div>
-        </div>
-        
-        <div class="header-buttons">
-            <a href="{{ url_for('progress.dashboard') }}" class="header-button">
-                <i class="fas fa-chart-bar"></i>
-                Dashboard
-            </a>
         </div>
     </div>
     
@@ -37,7 +22,6 @@
     
     <div id="loading" class="loading hidden">
         <div class="spinner"></div>
-        <div class="loading-text">Buddy is thinking...</div>
     </div>
     
     <div id="quiz-container" class="quiz-container hidden">
@@ -49,34 +33,13 @@
     </div>
     
     <div class="chat-input-container">
-        <div class="emoji-button" id="emoji-button" title="Add emoji">
-            <i class="fas fa-smile"></i>
-        </div>
-        <input type="text" id="user-input" placeholder="Type your message here..." autofocus>
-        <button id="quiz-button" class="feature-button" title="Generate a quiz about this topic">
-            <i class="fas fa-question-circle"></i> Quiz Me!
+        <input type="text" id="user-input" placeholder="Type your question here..." autofocus>
+        <button id="quiz-button" class="btn btn-accent">
+            <i class="fas fa-gamepad"></i> Quiz Me!
         </button>
-        <button id="send-button">
+        <button id="send-button" class="btn btn-primary">
             <i class="fas fa-paper-plane"></i> Send
         </button>
-    </div>
-    
-    <div class="floating-balloons">
-        <div class="balloon" style="--delay: 3s; --position: 10%"></div>
-        <div class="balloon" style="--delay: 7s; --position: 30%"></div>
-        <div class="balloon" style="--delay: 5s; --position: 60%"></div>
-        <div class="balloon" style="--delay: 9s; --position: 80%"></div>
-    </div>
-    
-    <div class="floating-elements">
-        <div class="floating-item bubble bubble-1"></div>
-        <div class="floating-item bubble bubble-2"></div>
-        <div class="floating-item bubble bubble-3"></div>
-        <div class="floating-item star star-1"></div>
-        <div class="floating-item star star-2"></div>
-        <div class="floating-item rocket"></div>
-        <div class="floating-item planet planet-1"></div>
-        <div class="floating-item planet planet-2"></div>
     </div>
 </div>
 {% endblock %}

@@ -273,36 +273,35 @@ def award_achievement(user_id, achievement_name):
     db.session.commit()
 
 def initialize_achievements():
-    """Initialize default achievements in the database"""
-    achievements = [
-        # Quiz achievements
-        {'name': 'First Quiz', 'description': 'Complete your first quiz', 'category': 'quiz', 'points': 10},
-        {'name': 'Quiz Master', 'description': 'Complete 10 quizzes', 'category': 'quiz', 'points': 30},
-        {'name': 'Perfect Score', 'description': 'Get a perfect score on a quiz', 'category': 'quiz', 'points': 25},
-        
-        # Learning achievements
-        {'name': 'Learning Hour', 'description': 'Spend 60 minutes learning', 'category': 'learning', 'points': 20},
-        {'name': 'Learning Expert', 'description': 'Spend 5 hours learning', 'category': 'learning', 'points': 50},
-        {'name': 'Curious Mind', 'description': 'Explore at least 3 different topics', 'category': 'learning', 'points': 15},
-        
-        # Streak achievements
-        {'name': 'Just Getting Started', 'description': 'Log in for 3 days in a row', 'category': 'streak', 'points': 15},
-        {'name': 'Weekly Warrior', 'description': 'Log in for 7 days in a row', 'category': 'streak', 'points': 30},
-        
-        # Level achievements
-        {'name': 'Level Up', 'description': 'Reach level 2', 'category': 'level', 'points': 20},
-        {'name': 'Rising Star', 'description': 'Reach level 5', 'category': 'level', 'points': 50},
-        
-        # Subject achievements
-        {'name': 'Math Explorer', 'description': 'Complete a math quiz', 'category': 'quiz', 'points': 10},
-        {'name': 'Science Whiz', 'description': 'Complete a science quiz', 'category': 'quiz', 'points': 10}
-    ]
-    
-    # Check if achievements already exist
-    if Achievement.query.count() == 0:
-        for achievement_data in achievements:
-            achievement = Achievement(**achievement_data)
-            db.session.add(achievement)
-        
-        db.session.commit()
-        print("Achievements initialized successfully")
+    """Initialize default achievements in the database."""
+    try:
+        if Achievement.query.count() == 0:
+            # Define default achievements
+            default_achievements = [
+                {
+                    'name': 'First Chat',
+                    'description': 'Started your first conversation with Buddy!',
+                    'icon': 'fa-comments',
+                    'points': 10,
+                    'category': 'Chat'
+                },
+                {
+                    'name': 'Quiz Master',
+                    'description': 'Scored 100% on a quiz!',
+                    'icon': 'fa-graduation-cap',
+                    'points': 25,
+                    'category': 'Quiz'
+                },
+                # Add other achievements...
+            ]
+            
+            for achievement_data in default_achievements:
+                achievement = Achievement(**achievement_data)
+                db.session.add(achievement)
+            
+            db.session.commit()
+            print("Default achievements initialized.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error initializing achievements: {str(e)}")
+

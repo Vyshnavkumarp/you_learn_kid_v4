@@ -3,6 +3,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from models import db, User
 from datetime import datetime
 from email_validator import validate_email, EmailNotValidError
+from werkzeug.security import generate_password_hash, check_password_hash
 
 auth = Blueprint('auth', __name__)
 login_manager = LoginManager()
@@ -23,95 +24,109 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        user = User.query.filter_by(username=username).first()
+        # Add debug logging
+        print(f"Login attempt for user: {username}")
         
-        if user and user.verify_password(password):
-            login_user(user)
-            user.last_login = datetime.utcnow()
-            db.session.commit()
-            return redirect(url_for('chat'))
+        # Find user by username (case-insensitive)
+        user = User.query.filter(User.username.ilike(username)).first()
+        
+        if user:
+            # Debug the password verification
+            print(f"User found: {user.username}")
+            
+            # Use the verify_password method instead of check_password_hash
+            password_matches = user.verify_password(password)
+            print(f"Password match: {password_matches}")
+            
+            if password_matches:
+                login_user(user, remember=True)
+                
+                # Update login streak
+                today = datetime.now().date()
+                if not user.last_login or (today - user.last_login.date()).days == 1:
+                    # Consecutive day login
+                    user.login_streak += 1
+                elif (today - user.last_login.date()).days > 1:
+                    # Streak broken
+                    user.login_streak = 1
+                
+                user.last_login = datetime.now()
+                db.session.commit()
+                
+                # Redirect based on referring page
+                next_page = request.args.get('next')
+                return redirect(next_page or url_for('chat'))
+            else:
+                flash('Invalid username or password.', 'error')
         else:
-            flash('Invalid username or password', 'error')
-            return render_template('login.html')
+            flash('Invalid username or password.', 'error')
+            
+        return redirect(url_for('auth.login'))
+    
+    return render_template('login.html')
 
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('chat'))
     
-    if request.method == 'GET':
-        return render_template('register.html')
-    
     if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        age = request.form.get('age')
+        parent_email = request.form.get('parent_email')
+        
+        # Check if username or email already exists
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            flash('Username already exists.', 'error')
+            return redirect(url_for('auth.register'))
+        
+        existing_email = User.query.filter_by(email=email).first()
+        if existing_email:
+            flash('Email already registered.', 'error')
+            return redirect(url_for('auth.register'))
+        
+        # Create user with direct password hash setting to bypass any issues with the setter
+        hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+        
+        # Create new user - use _password directly to bypass property setter
+        new_user = User(
+            username=username,
+            email=email,
+            _password=hashed_password,  # Use the private attribute directly
+            first_name=first_name,
+            last_name=last_name,
+            age=age,
+            parent_email=parent_email,
+            created_at=datetime.now(),
+            last_login=datetime.now(),
+            login_streak=1,
+            level=1,
+            total_xp=0
+        )
+        
         try:
-            username = request.form.get('username')
-            email = request.form.get('email')
-            password = request.form.get('password')
-            first_name = request.form.get('first_name')
-            last_name = request.form.get('last_name', '')
-            age = request.form.get('age')
-            parent_email = request.form.get('parent_email', None)
-            
-            # Validate required fields
-            required_fields = ['username', 'email', 'password', 'first_name', 'age']
-            for field in required_fields:
-                if not request.form.get(field):
-                    flash(f'{field.replace("_", " ").title()} is required', 'error')
-                    return render_template('register.html')
-            
-            # Validate email format
-            try:
-                valid = validate_email(email)
-                email = valid.email
-            except EmailNotValidError as e:
-                flash(f'Invalid email: {str(e)}', 'error')
-                return render_template('register.html')
-            
-            # If parent_email is provided, validate it
-            if parent_email:
-                try:
-                    valid_parent = validate_email(parent_email)
-                    parent_email = valid_parent.email
-                except EmailNotValidError:
-                    parent_email = None  # Reset if invalid
-            
-            # Check if username or email already exists
-            if User.query.filter_by(username=username).first():
-                flash('Username already exists', 'error')
-                return render_template('register.html')
-                
-            if User.query.filter_by(email=email).first():
-                flash('Email already registered', 'error')
-                return render_template('register.html')
-            
-            # Create new user
-            new_user = User(
-                username=username,
-                email=email,
-                password=password,
-                first_name=first_name,
-                last_name=last_name,
-                age=int(age),
-                parent_email=parent_email
-            )
-            
             db.session.add(new_user)
             db.session.commit()
-            
-            # Log the user in
-            login_user(new_user)
-            
-            return redirect(url_for('chat'))
-            
+            flash('Account created successfully! Please login.', 'success')
+            return redirect(url_for('auth.login'))
         except Exception as e:
             db.session.rollback()
-            flash(f'An error occurred during registration: {str(e)}', 'error')
-            return render_template('register.html')
+            flash(f'Error creating account: {str(e)}', 'error')
+            print(f"Registration error: {str(e)}")
+            return redirect(url_for('auth.register'))
+    
+    return render_template('register.html')
 
 @auth.route('/logout')
 @login_required
 def logout():
     logout_user()
+    flash('You have been logged out.', 'success')
     return redirect(url_for('auth.login'))
 
 @auth.route('/profile')
